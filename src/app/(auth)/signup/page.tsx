@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -56,7 +57,7 @@ export default function SignupPage() {
         return;
       }
 
-      // Create profile entry
+      // Create profile entry if it doesn't exist
       if (data.user) {
         const { error: profileError } = await supabase.from("profiles").insert({
           id: data.user.id,
@@ -69,14 +70,42 @@ export default function SignupPage() {
         }
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      // If email verification is enabled, session will be null
+      if (data.user && !data.session) {
+        setSuccessMsg("Account created! Please check your email to verify your account.");
+      } else {
+        router.push("/dashboard");
+        router.refresh();
+      }
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  if (successMsg) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+        <div className="w-full max-w-md">
+          <FadeInUp>
+            <div className="glass rounded-2xl p-8 text-center border-primary/50 bg-primary/5">
+              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Mail className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold mb-4">Check your email</h2>
+              <p className="text-muted-foreground mb-8">
+                {successMsg}
+              </p>
+              <Button className="w-full h-11 gradient-bg text-white border-0" onClick={() => router.push("/login")}>
+                Return to log in
+              </Button>
+            </div>
+          </FadeInUp>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
