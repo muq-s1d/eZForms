@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Zap } from "lucide-react";
+import Image from "next/image";
 
 export function Footer() {
   return (
@@ -7,12 +7,12 @@ export function Footer() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md gradient-bg flex items-center justify-center">
-              <Zap className="w-3 h-3 text-white" />
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-6 h-6 rounded-md overflow-hidden flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Image src="/ezicon.png" alt="eZForms Logo" width={24} height={24} className="object-cover" />
             </div>
             <span className="text-sm font-semibold text-foreground">
-              eZ<span className="gradient-text">Forms</span>
+              eZ<span className="text-primary font-bold">Forms</span>
             </span>
           </Link>
 
