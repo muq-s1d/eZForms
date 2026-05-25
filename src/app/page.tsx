@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,14 @@ export default function LandingPage() {
       {/* ===== HERO SECTION ===== */}
       <section className="pt-32 pb-32 px-4 sm:px-6 flex-1 flex flex-col justify-center">
         <div className="max-w-4xl mx-auto text-center">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="w-24 h-24 mx-auto mb-8 rounded-2xl overflow-hidden shadow-2xl"
+          >
+            <Image src="/ezicon.png" alt="eZForms Icon" width={96} height={96} className="object-cover" />
+          </motion.div>
           <Link href="/home">
             <motion.div 
               initial={{ opacity: 0, y: -10 }}

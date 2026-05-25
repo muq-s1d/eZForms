@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -74,8 +75,8 @@ export function Navbar({ user: initialUser, onLogout }: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href={localUser ? "/dashboard" : "/"} className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Zap className="w-4 h-4 text-primary-foreground" />
+            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Image src="/ezicon.png" alt="eZForms Logo" width={32} height={32} className="object-cover" />
             </div>
             <span className="text-lg font-bold text-foreground">
               eZ<span className="text-primary font-bold">Forms</span>
