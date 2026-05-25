@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -55,11 +56,11 @@ export default function LoginPage() {
         <FadeInUp>
           {/* Logo */}
           <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
-            <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Zap className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Image src="/ezicon.png" alt="eZForms Logo" width={40} height={40} className="object-cover" />
             </div>
             <span className="text-xl font-bold">
-              eZ<span className="gradient-text">Forms</span>
+              eZ<span className="text-primary font-bold">Forms</span>
             </span>
           </Link>
         </FadeInUp>
