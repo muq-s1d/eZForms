@@ -2,7 +2,7 @@
 
 A modern, anonymous voting platform designed for friend groups to create custom "most likely to" polls, secure them with passwords, and see what everyone really thinks with beautiful realtime visualizations.
 
-**Live Demo:** [https://ezforms.vercel.app](https://ezforms.vercel.app) *(Update link once deployed)*
+**Live Demo:** [https://ezforms-gamma.vercel.app](https://ezforms-gamma.vercel.app)
 
 ## How It Works
 
