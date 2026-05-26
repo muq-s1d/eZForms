@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Lock, Clock } from "lucide-react";
+import { ArrowRight, Lock, Clock, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
@@ -34,7 +34,13 @@ export default function HomePage() {
       <Navbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto relative">
+          <div className="mb-6">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all hover:shadow-md hover:border-border">
+              <ArrowLeft className="w-4 h-4" />
+              Back to home
+            </Link>
+          </div>
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Live Forms Feed</h1>
             <span className="text-sm text-muted-foreground flex items-center gap-1.5 px-3 py-1 bg-secondary rounded-full">
