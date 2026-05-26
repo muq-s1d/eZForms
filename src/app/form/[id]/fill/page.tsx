@@ -101,6 +101,7 @@ export default function FillFormPage() {
       sessionStorage.setItem(`ezforms-auth-${formId}`, "true");
       setStage("identity");
     } else {
+      setPasswordInput("");
       setPasswordError("Incorrect password");
     }
   };
@@ -212,7 +213,11 @@ export default function FillFormPage() {
   // ===== PASSWORD GATE =====
   if (stage === "password") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background relative">
+        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all z-10 hover:shadow-md hover:border-border">
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </Link>
         <div className="w-full max-w-sm">
           <FadeInUp>
             <div className="glass rounded-xl p-8 border border-border">

@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { FadeInUp } from "@/components/animations/motion-wrapper";
 import { createClient } from "@/lib/supabase/client";
 
@@ -26,13 +26,23 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
 
+    if (!email || email.trim() === "") {
+      setError("Please enter your email.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
       return;
     }
 
-    if (username.length < 2) {
-      setError("Username must be at least 2 characters.");
+    if (username.length < 5) {
+      setError("Username must be at least 5 characters.");
       return;
     }
 
@@ -40,6 +50,19 @@ export default function SignupPage() {
 
     try {
       const supabase = createClient();
+
+      // Check if username is taken
+      const { data: existingUser } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("username", username)
+        .maybeSingle();
+
+      if (existingUser) {
+        setError("This username is already taken.");
+        setLoading(false);
+        return;
+      }
 
       // Sign up the user
       const { data, error: authError } = await supabase.auth.signUp({
@@ -87,6 +110,10 @@ export default function SignupPage() {
   if (successMsg) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all z-10 hover:shadow-md hover:border-border">
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </Link>
         <div className="w-full max-w-md">
           <FadeInUp>
             <div className="glass rounded-2xl p-8 text-center border-primary/50 bg-primary/5">
@@ -113,6 +140,11 @@ export default function SignupPage() {
       <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full opacity-10 blur-[120px] bg-purple-accent pointer-events-none" />
       <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full opacity-10 blur-[100px] bg-coral pointer-events-none" />
 
+      <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all z-10 hover:shadow-md hover:border-border">
+        <ArrowLeft className="w-4 h-4" />
+        Back to home
+      </Link>
+
       <div className="w-full max-w-md">
         <FadeInUp>
           {/* Logo */}
@@ -135,7 +167,7 @@ export default function SignupPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSignup} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4" noValidate>
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-sm font-medium">
                   Username
@@ -191,7 +223,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
