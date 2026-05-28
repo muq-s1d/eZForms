@@ -23,6 +23,8 @@ import {
   Sparkles,
   Rocket,
   Copy,
+  Globe,
+  Lock,
 } from "lucide-react";
 import type { FormStep } from "@/lib/types/database";
 
@@ -57,6 +59,7 @@ export default function CreateFormPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [password, setPassword] = useState("");
+  const [isPublicResults, setIsPublicResults] = useState(false);
   const [participantInput, setParticipantInput] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [questionInput, setQuestionInput] = useState("");
@@ -141,7 +144,7 @@ export default function CreateFormPage() {
           description: description || null,
           password: password.trim(),
           is_active: true,
-          is_public_results: false,
+          is_public_results: isPublicResults,
         })
         .select()
         .single();
@@ -369,6 +372,46 @@ export default function CreateFormPage() {
                       className="h-11 bg-input border-border focus:border-primary/50"
                     />
                   </div>
+
+                  {/* Results Visibility Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsPublicResults(!isPublicResults)}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+                      isPublicResults
+                        ? "bg-primary/10 border-primary/40 text-foreground"
+                        : "bg-secondary/50 border-border text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {isPublicResults ? (
+                        <Globe className="w-4 h-4 text-primary" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      <div className="text-left">
+                        <p className="text-sm font-medium">
+                          {isPublicResults ? "Public results" : "Private results"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {isPublicResults
+                            ? "Voters can see the results after submitting"
+                            : "Only you can see the results"}
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      className={`w-10 h-5.5 rounded-full transition-all duration-200 relative ${
+                        isPublicResults ? "bg-primary" : "bg-secondary border border-border"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
+                          isPublicResults ? "left-5.5" : "left-0.5"
+                        }`}
+                      />
+                    </div>
+                  </button>
                 </div>
               )}
 
