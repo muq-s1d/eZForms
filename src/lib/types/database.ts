@@ -24,6 +24,7 @@ export interface Participant {
   id: string;
   form_id: string;
   name: string;
+  has_voted: boolean;
 }
 
 export interface Question {

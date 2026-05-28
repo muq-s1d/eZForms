@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { BarChart3, Users, Trophy, Copy, Check, ArrowLeft, Lock, PieChart as PieChartIcon } from "lucide-react";
 import type { Form, Participant, Question } from "@/lib/types/database";
 import Link from "next/link";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, Sector } from "recharts";
+import { DonutChart } from "@/components/ui/donut-chart";
 
 interface VoteCount {
   participant_id: string;
@@ -42,7 +43,6 @@ export default function ResultsPage() {
   const [totalResponses, setTotalResponses] = useState(0);
   const [copied, setCopied] = useState(false);
   const [chartType, setChartType] = useState<"bar" | "pie">("bar");
-  
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
@@ -197,7 +197,16 @@ export default function ResultsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const barColors = ["#ffffff", "#d4d4d8", "#a1a1aa", "#71717a", "#52525b", "#3f3f46"];
+  const barColors = [
+    "#4285F4", // Google Blue
+    "#EA4335", // Google Red
+    "#FBBC05", // Google Yellow
+    "#34A853", // Google Green
+    "#9C27B0", // Purple
+    "#FF9800", // Orange
+    "#00BCD4", // Cyan
+    "#E91E63", // Pink
+  ];
 
   if (stage === "loading") {
     return (
@@ -410,10 +419,10 @@ export default function ResultsPage() {
                         </span>
                       </div>
 
-                      {hasWinner && chartType === "bar" && (
+                      {hasWinner && (
                         <div className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-md bg-secondary border border-border w-fit">
-                          <Trophy className="w-3.5 h-3.5 text-foreground" />
-                          <span className="text-xs font-medium text-foreground">
+                          <Trophy className="w-3.5 h-3.5" style={{ color: barColors[0] }} />
+                          <span className="text-xs font-medium" style={{ color: barColors[0] }}>
                             {winner.participant_name} is leading
                           </span>
                         </div>
@@ -444,7 +453,7 @@ export default function ResultsPage() {
                                     className="h-full rounded-full"
                                     style={{ backgroundColor: barColors[vi % barColors.length] }}
                                     initial={{ width: 0 }}
-                                    animate={{ width: `${maxVotes > 0 ? (vote.count / maxVotes) * 100 : 0}%` }}
+                                    animate={{ width: `${qr.total > 0 ? (vote.count / qr.total) * 100 : 0}%` }}
                                     transition={{ duration: 0.8, delay: qi * 0.1 + vi * 0.05, ease: "easeOut" }}
                                   />
                                 </div>
@@ -453,46 +462,15 @@ export default function ResultsPage() {
                           })}
                         </div>
                       ) : (
-                        <div className="h-[250px] w-full mt-4">
-                          {pieData.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <Pie
-                                  data={pieData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={60}
-                                  outerRadius={90}
-                                  paddingAngle={5}
-                                  dataKey="value"
-                                  animationDuration={1000}
-                                  stroke="var(--card)"
-                                  strokeWidth={2}
-                                >
-                                  {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                                  ))}
-                                </Pie>
-                                <RechartsTooltip 
-                                  formatter={(value: any) => [`${value} votes`, undefined]}
-                                  contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--foreground)' }}
-                                  itemStyle={{ color: 'var(--foreground)' }}
-                                />
-                              </PieChart>
-                            </ResponsiveContainer>
-                          ) : (
-                            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                              No data to display
-                            </div>
-                          )}
-                          <div className="flex flex-wrap justify-center gap-4 mt-2">
-                            {pieData.map((entry, index) => (
-                              <div key={entry.name} className="flex items-center gap-1.5 text-xs">
-                                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: barColors[index % barColors.length] }} />
-                                <span>{entry.name}</span>
-                              </div>
-                            ))}
-                          </div>
+                        <div className="w-full mt-4">
+                          <DonutChart
+                            data={pieData.map((d, i) => ({
+                              name: d.name,
+                              value: d.value,
+                              color: barColors[i % barColors.length],
+                            }))}
+                            total={qr.total}
+                          />
                         </div>
                       )}
                     </div>
