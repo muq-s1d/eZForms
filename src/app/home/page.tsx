@@ -30,13 +30,13 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div className="flex flex-col min-h-screen text-white">
       <Navbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto relative">
           <div className="mb-6">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all hover:shadow-md hover:border-border">
+            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium btn-obsidian-ghost px-4 py-2 rounded-full shadow-sm transition-all">
               <ArrowLeft className="w-4 h-4" />
               Back to home
             </Link>
@@ -61,7 +61,7 @@ export default function HomePage() {
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : liveForms.length === 0 ? (
-            <div className="text-center py-16 border border-border rounded-xl bg-card">
+            <div className="text-center py-16 glass-panel rounded-xl">
               <p className="text-muted-foreground">No live forms right now.</p>
             </div>
           ) : (
@@ -71,7 +71,7 @@ export default function HomePage() {
                   <motion.div
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
-                    className="p-5 rounded-xl border border-border bg-card hover:border-primary transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="glass-panel p-5 rounded-xl hover:border-[#333] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div>
                       <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">

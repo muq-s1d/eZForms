@@ -124,7 +124,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-5 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center text-white px-5 relative overflow-hidden">
       {/* Subtle mesh */}
       <div
         className="pointer-events-none absolute inset-0"

@@ -123,7 +123,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#050505] text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <Navbar user={user} onLogout={handleLogout} />
 
       <main className="flex-1 pt-[100px] pb-16 px-5 max-w-6xl mx-auto w-full">

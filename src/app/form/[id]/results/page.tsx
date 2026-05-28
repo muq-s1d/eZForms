@@ -159,7 +159,7 @@ export default function ResultsPage() {
   /* ── Loading ── */
   if (stage === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-white/10 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -168,7 +168,7 @@ export default function ResultsPage() {
   /* ── Error ── */
   if (stage === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-5">
+      <div className="min-h-screen flex items-center justify-center text-white px-5">
         <div className="text-center">
           <h1 className="text-xl font-bold mb-4">Form not found</h1>
           <Link href="/dashboard" className="btn-obsidian-ghost px-5 py-2.5 rounded-lg text-sm inline-block">
@@ -182,7 +182,7 @@ export default function ResultsPage() {
   /* ── Private ── */
   if (stage === "private") {
     return (
-      <div className="min-h-screen flex flex-col bg-[#050505] text-white">
+      <div className="min-h-screen flex flex-col text-white">
         <Navbar user={user} onLogout={handleLogout} />
         <main className="flex-1 flex items-center justify-center px-5">
           <motion.div
@@ -210,7 +210,7 @@ export default function ResultsPage() {
   /* ── Password gate ── */
   if (stage === "password") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-5">
+      <div className="min-h-screen flex items-center justify-center text-white px-5">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -250,7 +250,7 @@ export default function ResultsPage() {
 
   /* ── Results ── */
   return (
-    <div className="min-h-screen flex flex-col bg-[#050505] text-white">
+    <div className="min-h-screen flex flex-col text-white">
       <Navbar user={user} onLogout={handleLogout} />
 
       <main className="flex-1 pt-[100px] pb-16 px-5 max-w-4xl mx-auto w-full">

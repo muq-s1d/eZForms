@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AmbientWaves } from "@/components/animations/ambient-waves";
 import "./globals.css";
 
 const inter = Inter({
@@ -33,7 +34,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${plusJakartaSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="min-h-full flex flex-col font-sans relative">
+        <AmbientWaves />
         <TooltipProvider delay={300}>
           {children}
         </TooltipProvider>

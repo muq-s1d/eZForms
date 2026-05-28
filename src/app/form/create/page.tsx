@@ -215,7 +215,7 @@ export default function CreateFormPage() {
 
   /* ── Main form ── */
   return (
-    <div className="min-h-screen flex flex-col bg-[#050505] text-white">
+    <div className="min-h-screen flex flex-col text-white overflow-hidden relative">
       <Navbar user={user} />
 
       <main className="flex-1 pt-[100px] pb-16 px-5">

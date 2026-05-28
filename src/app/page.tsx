@@ -78,34 +78,12 @@ const features = [
 
 /* ─── Component ─── */
 export default function LandingPage() {
-  // Mouse-tracking mesh gradient
-  const meshRef = useRef<HTMLDivElement>(null);
+  // Removed mouse-tracking mesh gradient as requested
   const primaryBtnRef = useRef<HTMLButtonElement>(null);
   useMagnet(primaryBtnRef);
 
-  useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    const onMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth) * 100;
-      const y = (e.clientY / window.innerHeight) * 100;
-      mesh.style.background = `radial-gradient(circle at ${x}% ${y}%, rgba(66,133,244,0.055) 0%, transparent 45%)`;
-    };
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
-
   return (
-    <div className="flex flex-col min-h-screen bg-[#050505] text-white overflow-x-hidden">
-      {/* Mouse mesh background */}
-      <div
-        ref={meshRef}
-        className="pointer-events-none fixed inset-0 z-0"
-        style={{
-          background: "radial-gradient(circle at 50% 40%, rgba(66,133,244,0.04) 0%, transparent 45%)",
-          transition: "background 0.1s linear",
-        }}
-      />
+    <div className="flex flex-col min-h-screen text-white overflow-x-hidden">
 
       <Navbar />
 
