@@ -3,13 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
-import { FadeInUp } from "@/components/animations/motion-wrapper";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowLeft,
@@ -28,12 +22,16 @@ import {
 } from "lucide-react";
 import type { FormStep } from "@/lib/types/database";
 
+const displayFont = { fontFamily: "var(--font-display, var(--font-sans))" };
+
 const steps: { key: FormStep; label: string; icon: React.ElementType }[] = [
-  { key: "details", label: "Details", icon: FileText },
-  { key: "participants", label: "People", icon: Users },
-  { key: "questions", label: "Questions", icon: MessageSquare },
-  { key: "review", label: "Launch", icon: Rocket },
+  { key: "details",      label: "Details",   icon: FileText },
+  { key: "participants", label: "People",    icon: Users },
+  { key: "questions",    label: "Questions", icon: MessageSquare },
+  { key: "review",       label: "Launch",    icon: Rocket },
 ];
+
+const ACCENT_COLORS = ["#4285F4", "#EA4335", "#FBBC05", "#34A853", "#9C27B0", "#FF9800"];
 
 export default function CreateFormPage() {
   const router = useRouter();
@@ -44,18 +42,7 @@ export default function CreateFormPage() {
   const [copied, setCopied] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
 
-  useEffect(() => {
-    async function getUser() {
-      const supabase = createClient();
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        setUser({ email: currentUser.email || "" });
-      }
-    }
-    getUser();
-  }, []);
-
-  // Form data
+  // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [password, setPassword] = useState("");
@@ -65,35 +52,35 @@ export default function CreateFormPage() {
   const [questionInput, setQuestionInput] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
 
+  useEffect(() => {
+    async function getUser() {
+      const supabase = createClient();
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) setUser({ email: currentUser.email || "" });
+    }
+    getUser();
+  }, []);
+
   const currentStepIndex = steps.findIndex((s) => s.key === currentStep);
+  const progressPct = (currentStepIndex / (steps.length - 1)) * 100;
 
   const canProceed = () => {
     switch (currentStep) {
-      case "details":
-        return title.trim().length > 0 && password.trim().length > 0;
-      case "participants":
-        return participants.length >= 2;
-      case "questions":
-        return questions.length >= 1;
-      case "review":
-        return true;
-      default:
-        return false;
+      case "details":      return title.trim().length > 0 && password.trim().length > 0;
+      case "participants": return participants.length >= 2;
+      case "questions":    return questions.length >= 1;
+      case "review":       return true;
+      default:             return false;
     }
   };
 
   const nextStep = () => {
     const nextIndex = currentStepIndex + 1;
-    if (nextIndex < steps.length) {
-      setCurrentStep(steps[nextIndex].key);
-    }
+    if (nextIndex < steps.length) setCurrentStep(steps[nextIndex].key);
   };
-
   const prevStep = () => {
     const prevIndex = currentStepIndex - 1;
-    if (prevIndex >= 0) {
-      setCurrentStep(steps[prevIndex].key);
-    }
+    if (prevIndex >= 0) setCurrentStep(steps[prevIndex].key);
   };
 
   const addParticipant = () => {
@@ -103,10 +90,7 @@ export default function CreateFormPage() {
       setParticipantInput("");
     }
   };
-
-  const removeParticipant = (name: string) => {
-    setParticipants(participants.filter((p) => p !== name));
-  };
+  const removeParticipant = (name: string) => setParticipants(participants.filter((p) => p !== name));
 
   const addQuestion = () => {
     const text = questionInput.trim();
@@ -115,31 +99,20 @@ export default function CreateFormPage() {
       setQuestionInput("");
     }
   };
-
-  const removeQuestion = (text: string) => {
-    setQuestions(questions.filter((q) => q !== text));
-  };
+  const removeQuestion = (text: string) => setQuestions(questions.filter((q) => q !== text));
 
   const handlePublish = async () => {
     setError("");
     setLoading(true);
-
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { setError("You must be logged in to create a form."); return; }
 
-      if (!user) {
-        setError("You must be logged in to create a form.");
-        return;
-      }
-
-      // 1. Create the form
       const { data: form, error: formError } = await supabase
         .from("forms")
         .insert({
-          creator_id: user.id,
+          creator_id: authUser.id,
           title,
           description: description || null,
           password: password.trim(),
@@ -149,41 +122,17 @@ export default function CreateFormPage() {
         .select()
         .single();
 
-      if (formError || !form) {
-        setError(formError?.message || "Failed to create form.");
-        return;
-      }
+      if (formError || !form) { setError(formError?.message || "Failed to create form."); return; }
 
-      // 2. Add participants
-      const participantInserts = participants.map((name) => ({
-        form_id: form.id,
-        name,
-      }));
+      const { error: partError } = await supabase.from("participants").insert(
+        participants.map((name) => ({ form_id: form.id, name }))
+      );
+      if (partError) { setError("Failed to add participants: " + partError.message); return; }
 
-      const { error: partError } = await supabase
-        .from("participants")
-        .insert(participantInserts);
-
-      if (partError) {
-        setError("Failed to add participants: " + partError.message);
-        return;
-      }
-
-      // 3. Add questions
-      const questionInserts = questions.map((text, i) => ({
-        form_id: form.id,
-        question_text: text,
-        sort_order: i,
-      }));
-
-      const { error: qError } = await supabase
-        .from("questions")
-        .insert(questionInserts);
-
-      if (qError) {
-        setError("Failed to add questions: " + qError.message);
-        return;
-      }
+      const { error: qError } = await supabase.from("questions").insert(
+        questions.map((text, i) => ({ form_id: form.id, question_text: text, sort_order: i }))
+      );
+      if (qError) { setError("Failed to add questions: " + qError.message); return; }
 
       setCreatedFormId(form.id);
     } catch {
@@ -195,288 +144,299 @@ export default function CreateFormPage() {
 
   const copyShareLink = () => {
     if (createdFormId) {
-      const url = `${window.location.origin}/form/${createdFormId}/fill`;
-      navigator.clipboard.writeText(url);
+      navigator.clipboard.writeText(`${window.location.origin}/form/${createdFormId}/fill`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
-  // ===== SUCCESS SCREEN =====
+  /* ── Success screen ── */
   if (createdFormId) {
     return (
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <div className="min-h-screen flex flex-col bg-[#050505] text-white">
         <Navbar user={user} />
-        <main className="flex-1 flex items-center justify-center px-4 pt-16">
-          <FadeInUp>
-            <div className="text-center max-w-md">
-              <motion.div
-                className="w-20 h-20 rounded-full gradient-bg flex items-center justify-center mx-auto mb-6"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
+        <main className="flex-1 flex items-center justify-center px-5 pt-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center max-w-md w-full"
+          >
+            <motion.div
+              className="w-20 h-20 rounded-full bg-[#34A853]/15 border border-[#34A853]/30 flex items-center justify-center mx-auto mb-6"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 220, delay: 0.15 }}
+            >
+              <Check className="w-9 h-9 text-[#34A853]" />
+            </motion.div>
+
+            <h1
+              className="text-3xl font-extrabold tracking-tight mb-2"
+              style={displayFont}
+            >
+              Form is live! 🎉
+            </h1>
+            <p className="text-[#A1A1A1] text-sm mb-8">
+              Share this link with your friends and watch the votes roll in.
+            </p>
+
+            <div className="glass-panel rounded-xl p-4 flex items-center gap-3 mb-5">
+              <code className="text-xs text-[#A1A1A1] flex-1 truncate">
+                {window.location.origin}/form/{createdFormId}/fill
+              </code>
+              <button
+                onClick={copyShareLink}
+                className="shrink-0 p-2 rounded-lg border border-[#1A1A1A] hover:border-[#333] hover:bg-white/5 text-[#A1A1A1] hover:text-white transition-all duration-200"
               >
-                <Check className="w-10 h-10 text-white" />
-              </motion.div>
-
-              <h1 className="text-2xl font-bold mb-2">Form is live! 🎉</h1>
-              <p className="text-muted-foreground text-sm mb-6">
-                Share this link with your friends and watch the votes roll in.
-              </p>
-
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border mb-4">
-                <code className="text-xs text-muted-foreground flex-1 truncate">
-                  {window.location.origin}/form/{createdFormId}/fill
-                </code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyShareLink}
-                  className="shrink-0"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-success" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1 border-border hover:border-primary/50"
-                  render={<a href={`/form/${createdFormId}/results`} />}
-                >
-                  View Results
-                </Button>
-                <Button
-                  className="flex-1 gradient-bg text-white border-0 hover:opacity-90"
-                  render={<a href="/dashboard" />}
-                >
-                  Dashboard
-                </Button>
-              </div>
+                {copied ? <Check className="w-4 h-4 text-[#34A853]" /> : <Copy className="w-4 h-4" />}
+              </button>
             </div>
-          </FadeInUp>
+
+            <div className="flex gap-3">
+              <a
+                href={`/form/${createdFormId}/results`}
+                className="flex-1 py-2.5 rounded-lg text-sm font-medium text-center btn-obsidian-ghost"
+              >
+                View Results
+              </a>
+              <a
+                href="/dashboard"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-center btn-obsidian-primary"
+              >
+                Dashboard
+              </a>
+            </div>
+          </motion.div>
         </main>
       </div>
     );
   }
 
+  /* ── Main form ── */
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col text-white overflow-hidden relative">
       <Navbar user={user} />
 
-      <main className="flex-1 pt-24 pb-12 px-4 sm:px-6">
-        <div className="max-w-2xl mx-auto">
-          {/* Step Indicator */}
-          <FadeInUp>
-            <div className="flex items-center justify-between mb-8">
+      <main className="flex-1 pt-[100px] pb-16 px-5">
+        <div className="max-w-xl mx-auto">
+
+          {/* ── Progress Stepper ── */}
+          <div className="mb-10 relative">
+            {/* Connecting line track */}
+            <div className="absolute top-[22px] left-[10%] right-[10%] h-[2px] bg-[#1A1A1A] rounded-full z-0" />
+            {/* Animated fill */}
+            <motion.div
+              className="absolute top-[22px] left-[10%] h-[2px] rounded-full z-0"
+              style={{
+                background: "#ffffff",
+                boxShadow: "0 0 8px rgba(255,255,255,0.4)",
+                width: `${progressPct * 0.8}%`,
+              }}
+              animate={{ width: `${progressPct * 0.8}%` }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            />
+
+            <div className="flex justify-between items-start relative z-10 px-[10%]">
               {steps.map((step, i) => {
                 const isActive = i === currentStepIndex;
                 const isCompleted = i < currentStepIndex;
-
                 return (
-                  <div key={step.key} className="flex items-center flex-1">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
-                          isActive
-                            ? "gradient-bg text-white glow-gradient"
-                            : isCompleted
-                            ? "bg-success/20 text-success"
-                            : "bg-secondary text-muted-foreground"
-                        }`}
-                      >
-                        {isCompleted ? (
-                          <Check className="w-4 h-4" />
-                        ) : (
-                          <step.icon className="w-4 h-4" />
-                        )}
-                      </div>
-                      <span
-                        className={`text-[10px] mt-1.5 font-medium ${
-                          isActive ? "text-primary" : "text-muted-foreground"
-                        }`}
-                      >
-                        {step.label}
-                      </span>
-                    </div>
-                    {i < steps.length - 1 && (
-                      <div
-                        className={`flex-1 h-px mx-2 mt-[-18px] transition-colors ${
-                          isCompleted ? "bg-success/40" : "bg-border"
-                        }`}
-                      />
-                    )}
-                  </div>
+                  <button
+                    key={step.key}
+                    onClick={() => { if (i < currentStepIndex) setCurrentStep(step.key); }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <motion.div
+                      animate={{
+                        backgroundColor: isCompleted
+                          ? "#34A853"
+                          : isActive
+                          ? "#ffffff"
+                          : "#0A0A0A",
+                        borderColor: isCompleted
+                          ? "#34A853"
+                          : isActive
+                          ? "#ffffff"
+                          : "#1A1A1A",
+                        color: isCompleted || isActive ? "#050505" : "#A1A1A1",
+                      }}
+                      transition={{ duration: 0.3 }}
+                      className="w-11 h-11 rounded-xl border flex items-center justify-center"
+                    >
+                      {isCompleted ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <step.icon className="w-4 h-4" />
+                      )}
+                    </motion.div>
+                    <span
+                      className={`text-[10px] font-semibold tracking-wider uppercase transition-colors ${
+                        isActive ? "text-white" : "text-[#444748]"
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </button>
                 );
               })}
             </div>
-          </FadeInUp>
+          </div>
 
-          {/* Step Content */}
+          {/* ── Step Content — horizontal slide ── */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.25 }}
-              className="glass rounded-2xl p-6 sm:p-8"
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="glass-panel rounded-2xl p-7 sm:p-8"
             >
-              {/* ===== DETAILS STEP ===== */}
+
+              {/* ── DETAILS ── */}
               {currentStep === "details" && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-bold mb-1">Name your form</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <h2 className="text-2xl font-extrabold tracking-tight mb-1" style={displayFont}>
+                      Name your form
+                    </h2>
+                    <p className="text-sm text-[#A1A1A1]">
                       Give it a fun title your friends will recognize.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
+                    <label className="text-sm font-medium text-white">Title</label>
+                    <input
+                      className="minimal-input w-full rounded-xl px-4 py-3 text-sm"
                       placeholder='e.g. "Squad Superlatives 2026"'
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      className="h-11 bg-input border-border focus:border-primary/50"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">
-                      Description{" "}
-                      <span className="text-muted-foreground font-normal">(optional)</span>
-                    </Label>
-                    <Textarea
-                      id="description"
+                    <label className="text-sm font-medium text-white">
+                      Description <span className="text-[#A1A1A1] font-normal">(optional)</span>
+                    </label>
+                    <textarea
+                      className="minimal-input w-full rounded-xl px-4 py-3 text-sm resize-none h-20"
                       placeholder="What's this form about?"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      className="min-h-[80px] bg-input border-border focus:border-primary/50 resize-none"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password">Form Password</Label>
-                    <Input
-                      id="password"
+                    <label className="text-sm font-medium text-white">Form Password</label>
+                    <input
                       type="password"
+                      className="minimal-input w-full rounded-xl px-4 py-3 text-sm"
                       placeholder="Required to access the form"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 bg-input border-border focus:border-primary/50"
                     />
                   </div>
 
-                  {/* Results Visibility Toggle */}
+                  {/* Privacy toggle */}
                   <button
                     type="button"
                     onClick={() => setIsPublicResults(!isPublicResults)}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
-                      isPublicResults
-                        ? "bg-primary/10 border-primary/40 text-foreground"
-                        : "bg-secondary/50 border-border text-foreground"
-                    }`}
+                    className="w-full flex items-center justify-between p-4 rounded-xl border border-[#1A1A1A] hover:border-[#333] bg-[#050505] transition-all duration-200"
                   >
                     <div className="flex items-center gap-3">
                       {isPublicResults ? (
-                        <Globe className="w-4 h-4 text-primary" />
+                        <Globe className="w-4 h-4 text-[#4285F4]" />
                       ) : (
-                        <Lock className="w-4 h-4 text-muted-foreground" />
+                        <Lock className="w-4 h-4 text-[#A1A1A1]" />
                       )}
                       <div className="text-left">
-                        <p className="text-sm font-medium">
+                        <p className="text-sm font-medium text-white">
                           {isPublicResults ? "Public results" : "Private results"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-[#A1A1A1] mt-0.5">
                           {isPublicResults
                             ? "Voters can see the results after submitting"
                             : "Only you can see the results"}
                         </p>
                       </div>
                     </div>
+                    {/* Toggle pill */}
                     <div
-                      className={`w-10 h-5.5 rounded-full transition-all duration-200 relative ${
-                        isPublicResults ? "bg-primary" : "bg-secondary border border-border"
+                      className={`w-11 h-6 rounded-full relative transition-colors duration-300 ${
+                        isPublicResults ? "bg-white" : "bg-[#1A1A1A]"
                       }`}
                     >
-                      <div
-                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
-                          isPublicResults ? "left-5.5" : "left-0.5"
-                        }`}
+                      <motion.div
+                        animate={{ x: isPublicResults ? 22 : 2 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        className="absolute top-1 w-4 h-4 rounded-full shadow"
+                        style={{ backgroundColor: isPublicResults ? "#050505" : "#ffffff" }}
                       />
                     </div>
                   </button>
                 </div>
               )}
 
-              {/* ===== PARTICIPANTS STEP ===== */}
+              {/* ── PARTICIPANTS ── */}
               {currentStep === "participants" && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-bold mb-1">Add your squad</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Add at least 2 people. These are both the voters and the answer options.
+                    <h2 className="text-2xl font-extrabold tracking-tight mb-1" style={displayFont}>
+                      Add your squad
+                    </h2>
+                    <p className="text-sm text-[#A1A1A1]">
+                      Add at least 2 people — they&apos;re both the voters and the answer options.
                     </p>
                   </div>
 
                   <div className="flex gap-2">
-                    <Input
-                      placeholder="Type a name..."
+                    <input
+                      className="minimal-input flex-1 rounded-xl px-4 py-3 text-sm"
+                      placeholder="Type a name and press Enter..."
                       value={participantInput}
                       onChange={(e) => setParticipantInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addParticipant();
-                        }
-                      }}
-                      className="h-11 bg-input border-border focus:border-primary/50"
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addParticipant(); } }}
                     />
-                    <Button
+                    <button
                       onClick={addParticipant}
                       disabled={!participantInput.trim()}
-                      className="gradient-bg text-white border-0 hover:opacity-90 h-11 px-4"
+                      className="w-12 h-12 rounded-xl btn-obsidian-primary flex items-center justify-center disabled:opacity-40"
                     >
                       <Plus className="w-4 h-4" />
-                    </Button>
+                    </button>
                   </div>
 
-                  {/* Participant tags */}
                   <div className="flex flex-wrap gap-2 min-h-[40px]">
                     <AnimatePresence>
-                      {participants.map((name) => (
+                      {participants.map((name, i) => (
                         <motion.div
                           key={name}
-                          initial={{ opacity: 0, scale: 0.8 }}
+                          initial={{ opacity: 0, scale: 0.75 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
+                          exit={{ opacity: 0, scale: 0.75 }}
                           layout
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1A1A1A] bg-[#050505] text-sm text-white"
                         >
-                          <Badge
-                            variant="secondary"
-                            className="pl-3 pr-1 py-1.5 text-sm flex items-center gap-1 bg-secondary border-border"
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: ACCENT_COLORS[i % ACCENT_COLORS.length] }}
+                          />
+                          {name}
+                          <button
+                            onClick={() => removeParticipant(name)}
+                            className="text-[#444748] hover:text-[#EA4335] transition-colors"
                           >
-                            {name}
-                            <button
-                              onClick={() => removeParticipant(name)}
-                              className="ml-1 p-0.5 rounded hover:bg-destructive/20 hover:text-destructive transition-colors"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </Badge>
+                            <X className="w-3 h-3" />
+                          </button>
                         </motion.div>
                       ))}
                     </AnimatePresence>
                   </div>
 
                   {participants.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-[#A1A1A1]">
                       {participants.length} participant{participants.length !== 1 ? "s" : ""} added
                       {participants.length < 2 && " — need at least 2"}
                     </p>
@@ -484,57 +444,51 @@ export default function CreateFormPage() {
                 </div>
               )}
 
-              {/* ===== QUESTIONS STEP ===== */}
+              {/* ── QUESTIONS ── */}
               {currentStep === "questions" && (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-bold mb-1">Add questions</h2>
-                    <p className="text-sm text-muted-foreground">
-                      &quot;Who is most likely to...&quot; — go wild. Add at least one.
+                    <h2 className="text-2xl font-extrabold tracking-tight mb-1" style={displayFont}>
+                      Add questions
+                    </h2>
+                    <p className="text-sm text-[#A1A1A1]">
+                      &ldquo;Who is most likely to...&rdquo; — go wild. Add at least one.
                     </p>
                   </div>
 
                   <div className="flex gap-2">
-                    <Input
+                    <input
+                      className="minimal-input flex-1 rounded-xl px-4 py-3 text-sm"
                       placeholder='e.g. "Who gets angry first?"'
                       value={questionInput}
                       onChange={(e) => setQuestionInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addQuestion();
-                        }
-                      }}
-                      className="h-11 bg-input border-border focus:border-primary/50"
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addQuestion(); } }}
                     />
-                    <Button
+                    <button
                       onClick={addQuestion}
                       disabled={!questionInput.trim()}
-                      className="gradient-bg text-white border-0 hover:opacity-90 h-11 px-4"
+                      className="w-12 h-12 rounded-xl btn-obsidian-primary flex items-center justify-center disabled:opacity-40"
                     >
                       <Plus className="w-4 h-4" />
-                    </Button>
+                    </button>
                   </div>
 
-                  {/* Questions list */}
                   <div className="space-y-2">
                     <AnimatePresence>
                       {questions.map((q, i) => (
                         <motion.div
                           key={q}
-                          initial={{ opacity: 0, y: -10 }}
+                          initial={{ opacity: 0, y: -8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
+                          exit={{ opacity: 0, x: -16 }}
                           layout
-                          className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 border border-border group"
+                          className="flex items-center gap-3 p-4 rounded-xl border border-[#1A1A1A] bg-[#050505] group"
                         >
-                          <span className="text-xs font-mono text-muted-foreground w-6 text-center shrink-0">
-                            {i + 1}
-                          </span>
-                          <span className="text-sm flex-1">{q}</span>
+                          <span className="text-xs text-[#444748] w-5 text-center shrink-0">{i + 1}</span>
+                          <span className="text-sm flex-1 text-white">{q}</span>
                           <button
                             onClick={() => removeQuestion(q)}
-                            className="p-1 rounded hover:bg-destructive/20 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                            className="opacity-0 group-hover:opacity-100 text-[#444748] hover:text-[#EA4335] transition-all"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -543,10 +497,9 @@ export default function CreateFormPage() {
                     </AnimatePresence>
                   </div>
 
-                  {/* Quick suggestions */}
                   {questions.length === 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground font-medium">Quick add:</p>
+                      <p className="text-xs text-[#444748] font-medium uppercase tracking-wider">Quick add:</p>
                       <div className="flex flex-wrap gap-2">
                         {[
                           "Who gets angry first?",
@@ -557,12 +510,8 @@ export default function CreateFormPage() {
                         ].map((suggestion) => (
                           <button
                             key={suggestion}
-                            onClick={() => {
-                              if (!questions.includes(suggestion)) {
-                                setQuestions([...questions, suggestion]);
-                              }
-                            }}
-                            className="text-xs px-3 py-1.5 rounded-full bg-card border border-border hover:border-primary/30 transition-colors text-muted-foreground hover:text-foreground"
+                            onClick={() => { if (!questions.includes(suggestion)) setQuestions([...questions, suggestion]); }}
+                            className="text-xs px-3 py-1.5 rounded-full border border-[#1A1A1A] hover:border-[#333] text-[#A1A1A1] hover:text-white bg-[#050505] transition-all duration-200"
                           >
                             + {suggestion}
                           </button>
@@ -573,51 +522,65 @@ export default function CreateFormPage() {
                 </div>
               )}
 
-              {/* ===== REVIEW STEP ===== */}
+              {/* ── REVIEW ── */}
               {currentStep === "review" && (
                 <div className="space-y-5">
                   <div>
-                    <h2 className="text-xl font-bold mb-1">Ready to launch? 🚀</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <h2 className="text-2xl font-extrabold tracking-tight mb-1" style={displayFont}>
+                      Ready to launch? 🚀
+                    </h2>
+                    <p className="text-sm text-[#A1A1A1]">
                       Review everything before publishing. You can&apos;t edit after launch (yet).
                     </p>
                   </div>
 
-                  {/* Summary */}
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-secondary/50 border border-border">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Title</p>
-                      <p className="font-semibold">{title}</p>
-                      {description && (
-                        <p className="text-sm text-muted-foreground mt-1">{description}</p>
-                      )}
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-xl border border-[#1A1A1A] bg-[#050505]">
+                      <p className="text-[10px] text-[#444748] uppercase tracking-widest font-semibold mb-1.5">Title</p>
+                      <p className="text-white font-medium">{title}</p>
+                      {description && <p className="text-sm text-[#A1A1A1] mt-1">{description}</p>}
                     </div>
 
-                    <div className="p-4 rounded-xl bg-secondary/50 border border-border">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                    <div className="p-4 rounded-xl border border-[#1A1A1A] bg-[#050505]">
+                      <p className="text-[10px] text-[#444748] uppercase tracking-widest font-semibold mb-2">
                         Participants ({participants.length})
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {participants.map((name) => (
-                          <Badge key={name} variant="secondary" className="text-xs">
+                        {participants.map((name, i) => (
+                          <span
+                            key={name}
+                            className="px-2.5 py-1 rounded-lg text-xs border border-[#1A1A1A] text-white"
+                            style={{ borderColor: ACCENT_COLORS[i % ACCENT_COLORS.length] + "40" }}
+                          >
                             {name}
-                          </Badge>
+                          </span>
                         ))}
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-secondary/50 border border-border">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                    <div className="p-4 rounded-xl border border-[#1A1A1A] bg-[#050505]">
+                      <p className="text-[10px] text-[#444748] uppercase tracking-widest font-semibold mb-2">
                         Questions ({questions.length})
                       </p>
                       <div className="space-y-1.5">
                         {questions.map((q, i) => (
-                          <p key={i} className="text-sm flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">{i + 1}.</span>
+                          <p key={i} className="text-sm text-white flex items-start gap-2">
+                            <span className="text-[#444748] shrink-0">{i + 1}.</span>
                             {q}
                           </p>
                         ))}
                       </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center gap-3">
+                      {isPublicResults ? (
+                        <Globe className="w-4 h-4 text-[#4285F4] shrink-0" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-[#A1A1A1] shrink-0" />
+                      )}
+                      <p className="text-sm text-[#A1A1A1]">
+                        Results are <span className="text-white font-medium">{isPublicResults ? "public" : "private"}</span>
+                      </p>
                     </div>
                   </div>
 
@@ -625,7 +588,7 @@ export default function CreateFormPage() {
                     <motion.p
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2"
+                      className="text-sm text-[#EA4335] bg-[#EA4335]/10 border border-[#EA4335]/20 rounded-xl px-4 py-3"
                     >
                       {error}
                     </motion.p>
@@ -635,46 +598,49 @@ export default function CreateFormPage() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation Buttons */}
+          {/* ── Navigation ── */}
           <div className="flex items-center justify-between mt-6">
-            <Button
-              variant="ghost"
+            <button
               onClick={prevStep}
               disabled={currentStepIndex === 0}
-              className="text-muted-foreground"
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                currentStepIndex === 0
+                  ? "opacity-0 pointer-events-none"
+                  : "btn-obsidian-ghost"
+              }`}
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-4 h-4" />
               Back
-            </Button>
+            </button>
 
             {currentStep === "review" ? (
-              <Button
+              <button
                 onClick={handlePublish}
                 disabled={loading}
-                className="gradient-bg text-white border-0 hover:opacity-90 px-8"
+                className="inline-flex items-center gap-2 px-7 py-2.5 rounded-lg text-sm font-semibold btn-obsidian-primary disabled:opacity-60"
               >
                 {loading ? (
                   <motion.div
-                    className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                    className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full"
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   />
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 mr-2" />
+                    <Sparkles className="w-4 h-4" />
                     Publish form
                   </>
                 )}
-              </Button>
+              </button>
             ) : (
-              <Button
+              <button
                 onClick={nextStep}
                 disabled={!canProceed()}
-                className="gradient-bg text-white border-0 hover:opacity-90 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-7 py-2.5 rounded-lg text-sm font-semibold btn-obsidian-primary disabled:opacity-40"
               >
                 Next
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             )}
           </div>
         </div>

@@ -4,15 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/navbar";
-import { FadeInUp, StaggerContainer, StaggerItem } from "@/components/animations/motion-wrapper";
 import { createClient } from "@/lib/supabase/client";
 import {
   Plus,
   Users,
-  MessageSquare,
   BarChart3,
   Copy,
   ExternalLink,
@@ -21,7 +17,7 @@ import {
   Lock,
   Unlock,
   PowerOff,
-  UserX
+  UserX,
 } from "lucide-react";
 import type { Form } from "@/lib/types/database";
 
@@ -31,6 +27,9 @@ interface FormWithCounts extends Form {
   response_count: number;
 }
 
+/* ── Display font helper ── */
+const displayFont = { fontFamily: "var(--font-display, var(--font-sans))" };
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
@@ -39,18 +38,11 @@ export default function DashboardPage() {
 
   const fetchForms = useCallback(async () => {
     const supabase = createClient();
-    const {
-      data: { user: currentUser },
-    } = await supabase.auth.getUser();
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-
+    if (!currentUser) { router.push("/login"); return; }
     setUser({ id: currentUser.id, email: currentUser.email || "" });
 
-    // Fetch forms with counts
     const { data: formsData } = await supabase
       .from("forms")
       .select("*")
@@ -61,20 +53,10 @@ export default function DashboardPage() {
       const formsWithCounts: FormWithCounts[] = await Promise.all(
         formsData.map(async (form: Form) => {
           const [participants, questions, responses] = await Promise.all([
-            supabase
-              .from("participants")
-              .select("id", { count: "exact", head: true })
-              .eq("form_id", form.id),
-            supabase
-              .from("questions")
-              .select("id", { count: "exact", head: true })
-              .eq("form_id", form.id),
-            supabase
-              .from("responses")
-              .select("id", { count: "exact", head: true })
-              .eq("form_id", form.id),
+            supabase.from("participants").select("id", { count: "exact", head: true }).eq("form_id", form.id),
+            supabase.from("questions").select("id", { count: "exact", head: true }).eq("form_id", form.id),
+            supabase.from("responses").select("id", { count: "exact", head: true }).eq("form_id", form.id),
           ]);
-
           return {
             ...form,
             participant_count: participants.count || 0,
@@ -83,16 +65,12 @@ export default function DashboardPage() {
           };
         })
       );
-
       setForms(formsWithCounts);
     }
-
     setLoading(false);
   }, [router]);
 
-  useEffect(() => {
-    fetchForms();
-  }, [fetchForms]);
+  useEffect(() => { fetchForms(); }, [fetchForms]);
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -114,7 +92,7 @@ export default function DashboardPage() {
   };
 
   const handleFinishForm = async (formId: string) => {
-    if (!confirm("Are you sure you want to finish this form? It will be closed for new votes.")) return;
+    if (!confirm("Close this form for new votes?")) return;
     const supabase = createClient();
     await supabase.from("forms").update({ is_active: false }).eq("id", formId);
     fetchForms();
@@ -127,17 +105,10 @@ export default function DashboardPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm("DANGER: Are you sure you want to permanently delete your account and all forms? This cannot be undone.")) return;
-    
+    if (!confirm("DANGER: Permanently delete your account and all forms? This cannot be undone.")) return;
     const supabase = createClient();
-    const { error } = await supabase.rpc('delete_user');
-    
-    if (error) {
-      alert("Failed to delete account. Ensure the database function is configured.");
-      console.error(error);
-      return;
-    }
-
+    const { error } = await supabase.rpc("delete_user");
+    if (error) { alert("Failed to delete account. Ensure the database function is configured."); return; }
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();
@@ -145,188 +116,224 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin"
-        />
+      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+        <div className="w-6 h-6 border-2 border-white/10 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col text-white">
       <Navbar user={user} onLogout={handleLogout} />
 
-      <main className="flex-1 pt-24 pb-12 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto">
-          {/* Header */}
-          <FadeInUp>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 border-b border-border pb-6">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold">Your forms</h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                  {forms.length === 0
-                    ? "Create your first voting form to get started"
-                    : `${forms.length} form${forms.length !== 1 ? "s" : ""} created`}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleDeleteAccount}
-                >
-                  <UserX className="w-4 h-4 mr-2" />
-                  Delete Account
-                </Button>
-                <Button
-                  className="bg-primary text-primary-foreground hover:opacity-90"
-                  render={<Link href="/form/create" />}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  New form
-                </Button>
-              </div>
+      <main className="flex-1 pt-[100px] pb-16 px-5 max-w-6xl mx-auto w-full">
+        {/* ── Header ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col sm:flex-row sm:items-end justify-between gap-5 mb-8 pb-6 border-b border-[#1A1A1A]"
+        >
+          <div>
+            <h1
+              className="text-3xl sm:text-4xl font-extrabold tracking-[-0.03em] text-white"
+              style={displayFont}
+            >
+              Your forms
+            </h1>
+            <p className="text-sm text-[#A1A1A1] mt-1.5">
+              {forms.length === 0
+                ? "Create your first voting form to get started"
+                : `${forms.length} form${forms.length !== 1 ? "s" : ""} created`}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDeleteAccount}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-[#EA4335]/70 hover:text-[#EA4335] border border-transparent hover:border-[#EA4335]/30 hover:bg-[#EA4335]/5 transition-all duration-200"
+            >
+              <UserX className="w-4 h-4" />
+              Delete Account
+            </button>
+            <Link
+              href="/form/create"
+              className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold btn-obsidian-primary"
+            >
+              <Plus className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90" />
+              New form
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* ── Forms Grid ── */}
+        {forms.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col items-center justify-center py-24 glass-panel rounded-2xl border-dashed"
+          >
+            <div className="w-14 h-14 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mb-5">
+              <Sparkles className="w-6 h-6 text-[#A1A1A1]" />
             </div>
-          </FadeInUp>
+            <h2 className="text-lg font-semibold text-white mb-2">No forms yet</h2>
+            <p className="text-sm text-[#A1A1A1] mb-7 text-center max-w-xs">
+              Create your first voting form and share it with your crew.
+            </p>
+            <Link
+              href="/form/create"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold btn-obsidian-primary"
+            >
+              <Plus className="w-4 h-4" />
+              Create your first form
+            </Link>
+          </motion.div>
+        ) : (
+          <motion.div
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.07 } },
+            }}
+          >
+            {forms.map((form) => (
+              <motion.article
+                key={form.id}
+                variants={{
+                  hidden: { opacity: 0, y: 18 },
+                  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
+                }}
+                className="group glass-panel rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden hover:border-[#333] transition-colors duration-300"
+              >
+                {/* Ambient bloom */}
+                <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-white/0 group-hover:bg-white/[0.03] blur-2xl transition-colors duration-500 pointer-events-none" />
 
-          {/* Forms Grid */}
-          {forms.length === 0 ? (
-            <FadeInUp delay={0.1}>
-              <div className="flex flex-col items-center justify-center py-20 bg-card border border-dashed border-border rounded-xl">
-                <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h2 className="text-lg font-semibold mb-2">No forms yet</h2>
-                <p className="text-sm text-muted-foreground mb-6 text-center max-w-sm">
-                  Create your first voting form and share it with your friends to get the chaos started.
-                </p>
-                <Button
-                  className="bg-primary text-primary-foreground hover:opacity-90"
-                  render={<Link href="/form/create" />}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create your first form
-                </Button>
-              </div>
-            </FadeInUp>
-          ) : (
-            <StaggerContainer className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {forms.map((form) => (
-                <StaggerItem key={form.id}>
-                  <div className="group p-5 rounded-xl bg-card border border-border hover:border-primary transition-all flex flex-col h-full">
-                    {/* Status + Title */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <h3 className="font-semibold text-base leading-snug line-clamp-2 flex-1">
-                        {form.title}
-                      </h3>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          form.is_active
-                            ? "bg-success/10 text-success border-success/20 text-xs shrink-0"
-                            : "bg-muted text-muted-foreground text-xs shrink-0"
-                        }
-                      >
-                        {form.is_active ? "Live" : "Finished"}
-                      </Badge>
-                    </div>
-
-                    {form.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-4">
-                        {form.description}
-                      </p>
+                {/* Title + Status */}
+                <div className="flex items-start justify-between gap-2 z-10">
+                  <h2 className="font-semibold text-[15px] leading-snug text-white line-clamp-2 flex-1">
+                    {form.title}
+                  </h2>
+                  <span
+                    className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      form.is_active
+                        ? "bg-[#34A853]/10 text-[#34A853] border-[#34A853]/25"
+                        : "bg-white/5 text-[#A1A1A1] border-[#1A1A1A]"
+                    }`}
+                  >
+                    {form.is_active ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#34A853] pulse-live" />
+                        Live
+                      </>
+                    ) : (
+                      "Finished"
                     )}
+                  </span>
+                </div>
 
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-6 mt-auto">
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {form.participant_count}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        {form.response_count} votes
-                      </span>
-                    </div>
+                {form.description && (
+                  <p className="text-xs text-[#A1A1A1] line-clamp-2 z-10">{form.description}</p>
+                )}
 
-                    {/* Primary Actions */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 text-xs h-8"
-                        render={<Link href={`/form/${form.id}/results`} />}
+                {/* Stats */}
+                <div className="flex items-center gap-4 text-[11px] text-[#A1A1A1] z-10 mt-auto">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    {form.participant_count}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    {form.response_count} votes
+                  </span>
+                </div>
+
+                {/* Primary Actions */}
+                <div className="flex items-center gap-2 z-10">
+                  <Link
+                    href={`/form/${form.id}/results`}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-[#A1A1A1] border border-[#1A1A1A] hover:text-white hover:border-[#333] hover:bg-white/5 transition-all duration-200"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    Results
+                  </Link>
+                  {form.is_active && (
+                    <>
+                      <button
+                        onClick={() => copyShareLink(form.id)}
+                        title="Copy share link"
+                        className="p-2 rounded-lg text-[#A1A1A1] border border-[#1A1A1A] hover:text-white hover:border-[#333] hover:bg-white/5 transition-all duration-200"
                       >
-                        <BarChart3 className="w-3 h-3 mr-1" />
-                        Results
-                      </Button>
-                      {form.is_active && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => copyShareLink(form.id)}
-                            title="Copy share link"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            render={<Link href={`/form/${form.id}/fill`} target="_blank" />}
-                            title="Open form"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Secondary Management Actions */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-border mt-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex-1 text-xs h-8 text-muted-foreground hover:text-foreground"
-                        onClick={() => handleTogglePrivacy(form.id, form.is_public_results)}
-                        title={form.is_public_results ? "Make Results Private" : "Make Results Public"}
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <Link
+                        href={`/form/${form.id}/fill`}
+                        target="_blank"
+                        title="Open form"
+                        className="p-2 rounded-lg text-[#A1A1A1] border border-[#1A1A1A] hover:text-white hover:border-[#333] hover:bg-white/5 transition-all duration-200"
                       >
-                        {form.is_public_results ? <Unlock className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />}
-                        {form.is_public_results ? "Public" : "Private"}
-                      </Button>
-                      
-                      {form.is_active && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-warning hover:text-warning hover:bg-warning/10"
-                          onClick={() => handleFinishForm(form.id)}
-                          title="Finish Form"
-                        >
-                          <PowerOff className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    </>
+                  )}
+                </div>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeleteForm(form.id)}
-                        title="Delete Form"
+                {/* Secondary row */}
+                <div className="flex items-center justify-between pt-3 border-t border-[#1A1A1A] z-10">
+                  <button
+                    onClick={() => handleTogglePrivacy(form.id, form.is_public_results)}
+                    className="inline-flex items-center gap-1.5 text-[11px] text-[#A1A1A1] hover:text-white transition-colors duration-200"
+                    title={form.is_public_results ? "Make Private" : "Make Public"}
+                  >
+                    {form.is_public_results ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                    {form.is_public_results ? "Public" : "Private"}
+                  </button>
+
+                  <div className="flex gap-1">
+                    {form.is_active && (
+                      <button
+                        onClick={() => handleFinishForm(form.id)}
+                        title="Close voting"
+                        className="p-1.5 rounded-lg text-[#FBBC05] hover:bg-[#FBBC05]/10 transition-all duration-200"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-
+                        <PowerOff className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteForm(form.id)}
+                      title="Delete form"
+                      className="p-1.5 rounded-lg text-[#EA4335] hover:bg-[#EA4335]/10 transition-all duration-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-          )}
-        </div>
+                </div>
+              </motion.article>
+            ))}
+
+            {/* Empty slot CTA */}
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 18 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
+              }}
+            >
+              <Link
+                href="/form/create"
+                className="group flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[#1A1A1A] hover:border-[#333] bg-transparent transition-all duration-300 min-h-[200px] p-6 w-full"
+              >
+                <div className="w-10 h-10 rounded-full border border-[#1A1A1A] group-hover:border-[#333] bg-[#0A0A0A] flex items-center justify-center text-[#A1A1A1] group-hover:text-white transition-colors duration-200">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <span className="text-sm text-[#A1A1A1] group-hover:text-white transition-colors duration-200">
+                  Create new form
+                </span>
+              </Link>
+            </motion.div>
+          </motion.div>
+        )}
       </main>
     </div>
   );
