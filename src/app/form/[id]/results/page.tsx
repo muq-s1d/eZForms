@@ -5,14 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { Navbar } from "@/components/layout/navbar";
-import { FadeInUp, StaggerContainer, StaggerItem } from "@/components/animations/motion-wrapper";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { BarChart3, Users, Trophy, Copy, Check, ArrowLeft, Lock, PieChart as PieChartIcon } from "lucide-react";
+import {
+  BarChart3,
+  Users,
+  Trophy,
+  Copy,
+  Check,
+  ArrowLeft,
+  Lock,
+  PieChart as PieChartIcon,
+  Share2,
+} from "lucide-react";
 import type { Form, Participant, Question } from "@/lib/types/database";
 import Link from "next/link";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, Sector } from "recharts";
 import { DonutChart } from "@/components/ui/donut-chart";
 
 interface VoteCount {
@@ -28,6 +33,19 @@ interface QuestionResults {
 }
 
 type Stage = "loading" | "private" | "password" | "results" | "error";
+
+const displayFont = { fontFamily: "var(--font-display, var(--font-sans))" };
+
+const ACCENT_COLORS = [
+  "#4285F4",
+  "#EA4335",
+  "#FBBC05",
+  "#34A853",
+  "#9C27B0",
+  "#FF9800",
+  "#00BCD4",
+  "#E91E63",
+];
 
 export default function ResultsPage() {
   const params = useParams();
@@ -48,85 +66,45 @@ export default function ResultsPage() {
 
   const fetchResults = useCallback(async () => {
     const supabase = createClient();
-
-    const {
-      data: { user: currentUser },
-    } = await supabase.auth.getUser();
-    
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (currentUser) setUser({ id: currentUser.id, email: currentUser.email || "" });
 
-    // Fetch form details
-    const { data: formData } = await supabase
-      .from("forms")
-      .select("*")
-      .eq("id", formId)
-      .single();
-
-    if (!formData) {
-      setError("Form not found.");
-      setStage("error");
-      return;
-    }
+    const { data: formData } = await supabase.from("forms").select("*").eq("id", formId).single();
+    if (!formData) { setError("Form not found."); setStage("error"); return; }
     setForm(formData);
 
-    // Privacy Check
     const isCreator = currentUser && currentUser.id === formData.creator_id;
     if (!isCreator) {
-      if (!formData.is_public_results) {
-        setStage("private");
-        return;
-      }
+      if (!formData.is_public_results) { setStage("private"); return; }
       if (formData.password) {
         const storedAuth = sessionStorage.getItem(`ezforms-auth-${formId}`);
-        if (storedAuth !== "true") {
-          setStage("password");
-          return;
-        }
+        if (storedAuth !== "true") { setStage("password"); return; }
       }
     }
 
-    // Fetch participants
-    const { data: parts } = await supabase
-      .from("participants")
-      .select("*")
-      .eq("form_id", formId);
+    const { data: parts } = await supabase.from("participants").select("*").eq("form_id", formId);
     setParticipants(parts || []);
 
-    // Fetch questions
     const { data: questions } = await supabase
-      .from("questions")
-      .select("*")
-      .eq("form_id", formId)
-      .order("sort_order");
+      .from("questions").select("*").eq("form_id", formId).order("sort_order");
 
-    // Fetch total responses
     const { count: respCount } = await supabase
-      .from("responses")
-      .select("id", { count: "exact", head: true })
-      .eq("form_id", formId);
+      .from("responses").select("id", { count: "exact", head: true }).eq("form_id", formId);
     setTotalResponses(respCount || 0);
 
-    // Fetch all answers
     const { data: answers } = await supabase
       .from("answers")
       .select("question_id, selected_participant_id")
-      .in(
-        "question_id",
-        (questions || []).map((q: Question) => q.id)
-      );
+      .in("question_id", (questions || []).map((q: Question) => q.id));
 
-    // Build results per question
     const results: QuestionResults[] = (questions || []).map((q: Question) => {
       const qAnswers = (answers || []).filter(
         (a: { question_id: string; selected_participant_id: string }) => a.question_id === q.id
       );
-
       const voteCounts = new Map<string, number>();
       qAnswers.forEach((a: { question_id: string; selected_participant_id: string }) => {
-        const current = voteCounts.get(a.selected_participant_id) || 0;
-        voteCounts.set(a.selected_participant_id, current + 1);
+        voteCounts.set(a.selected_participant_id, (voteCounts.get(a.selected_participant_id) || 0) + 1);
       });
-
       const votes: VoteCount[] = (parts || [])
         .map((p: Participant) => ({
           participant_id: p.id,
@@ -134,43 +112,24 @@ export default function ResultsPage() {
           count: voteCounts.get(p.id) || 0,
         }))
         .sort((a: VoteCount, b: VoteCount) => b.count - a.count);
-
-      return {
-        question: q,
-        votes,
-        total: qAnswers.length,
-      };
+      return { question: q, votes, total: qAnswers.length };
     });
 
     setQuestionResults(results);
     setStage("results");
   }, [formId]);
 
-  useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+  useEffect(() => { fetchResults(); }, [fetchResults]);
 
   useEffect(() => {
     if (stage !== "results") return;
-
     const supabase = createClient();
     const channel = supabase
       .channel(`results-${formId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "responses", filter: `form_id=eq.${formId}` },
-        () => fetchResults()
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "answers" },
-        () => fetchResults()
-      )
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "responses", filter: `form_id=eq.${formId}` }, () => fetchResults())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "answers" }, () => fetchResults())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [formId, fetchResults, stage]);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
@@ -181,6 +140,7 @@ export default function ResultsPage() {
       fetchResults();
     } else {
       setPasswordError("Incorrect password");
+      setPasswordInput("");
     }
   };
 
@@ -191,170 +151,133 @@ export default function ResultsPage() {
   };
 
   const copyShareLink = () => {
-    const url = `${window.location.origin}/form/${formId}/fill`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(`${window.location.origin}/form/${formId}/fill`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const barColors = [
-    "#4285F4", // Google Blue
-    "#EA4335", // Google Red
-    "#FBBC05", // Google Yellow
-    "#34A853", // Google Green
-    "#9C27B0", // Purple
-    "#FF9800", // Orange
-    "#00BCD4", // Cyan
-    "#E91E63", // Pink
-  ];
-
+  /* ── Loading ── */
   if (stage === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <motion.div
-          className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin"
-        />
+      <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+        <div className="w-6 h-6 border-2 border-white/10 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
 
+  /* ── Error ── */
   if (stage === "error") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-5">
         <div className="text-center">
-          <h1 className="text-xl font-bold mb-2">Form not found</h1>
-          <Button variant="outline" render={<Link href="/dashboard" />}>
+          <h1 className="text-xl font-bold mb-4">Form not found</h1>
+          <Link href="/dashboard" className="btn-obsidian-ghost px-5 py-2.5 rounded-lg text-sm inline-block">
             Go to Dashboard
-          </Button>
+          </Link>
         </div>
       </div>
     );
   }
 
+  /* ── Private ── */
   if (stage === "private") {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-[#050505] text-white">
         <Navbar user={user} onLogout={handleLogout} />
-        <main className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center max-w-sm glass rounded-xl p-8 border border-border">
-            <Lock className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
-            <h1 className="text-xl font-bold mb-2">Results are Private</h1>
-            <p className="text-sm text-muted-foreground mb-6">
+        <main className="flex-1 flex items-center justify-center px-5">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="glass-panel rounded-2xl p-10 text-center max-w-sm w-full"
+          >
+            <div className="w-12 h-12 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mx-auto mb-5">
+              <Lock className="w-5 h-5 text-[#A1A1A1]" />
+            </div>
+            <h1 className="text-xl font-bold mb-2">Results are private</h1>
+            <p className="text-sm text-[#A1A1A1] mb-7">
               The creator of this form has kept the results private.
             </p>
-            <Button variant="outline" render={<Link href="/" />}>
-              Go Home
-            </Button>
-          </div>
+            <Link href="/" className="btn-obsidian-ghost px-5 py-2.5 rounded-lg text-sm inline-block">
+              Go home
+            </Link>
+          </motion.div>
         </main>
       </div>
     );
   }
 
+  /* ── Password gate ── */
   if (stage === "password") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <div className="w-full max-w-sm">
-          <FadeInUp>
-            <div className="glass rounded-xl p-8 border border-border">
-              <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-6">
-                <Lock className="w-6 h-6 text-foreground" />
-              </div>
-              <h1 className="text-xl font-bold text-center mb-2">{form?.title}</h1>
-              <p className="text-sm text-center text-muted-foreground mb-6">
-                Enter the password to view results.
-              </p>
-              
-              <form onSubmit={handlePasswordSubmit}>
-                <div className="space-y-4">
-                  <Input
-                    type="password"
-                    placeholder="Enter password"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    className="text-center bg-secondary/50 h-12"
-                    autoFocus
-                  />
-                  {passwordError && (
-                    <p className="text-sm text-destructive text-center">{passwordError}</p>
-                  )}
-                  <Button type="submit" className="w-full h-12">
-                    Unlock Results
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </FadeInUp>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="glass-panel rounded-2xl p-8 w-full max-w-sm"
+        >
+          <div className="w-12 h-12 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mx-auto mb-5">
+            <Lock className="w-5 h-5 text-[#A1A1A1]" />
+          </div>
+          <h1 className="text-xl font-bold text-center mb-1">{form?.title}</h1>
+          <p className="text-sm text-center text-[#A1A1A1] mb-7">
+            Enter the password to view results.
+          </p>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="minimal-input w-full rounded-xl px-4 py-3 text-sm text-center"
+              autoFocus
+            />
+            {passwordError && (
+              <p className="text-sm text-[#EA4335] text-center">{passwordError}</p>
+            )}
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl text-sm font-semibold btn-obsidian-primary"
+            >
+              Unlock Results
+            </button>
+          </form>
+        </motion.div>
       </div>
     );
   }
 
+  /* ── Results ── */
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className="min-h-screen flex flex-col bg-[#050505] text-white">
       <Navbar user={user} onLogout={handleLogout} />
 
-      <main className="flex-1 pt-24 pb-12 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto">
-          {/* Header */}
-          <FadeInUp>
-            <div className="mb-8 border-b border-border pb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground mb-4"
-                render={<Link href="/dashboard" />}
+      <main className="flex-1 pt-[100px] pb-16 px-5 max-w-4xl mx-auto w-full">
+        {/* ── Header ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-8 pb-6 border-b border-[#1A1A1A]"
+        >
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm text-[#A1A1A1] hover:text-white transition-colors mb-5"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to dashboard
+          </Link>
+
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+            <div>
+              <h1
+                className="text-3xl sm:text-4xl font-extrabold tracking-[-0.03em] text-white mb-3"
+                style={displayFont}
               >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Back to dashboard
-              </Button>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold">{form?.title}</h1>
-                  {form?.description && (
-                    <p className="text-sm text-muted-foreground mt-1">{form.description}</p>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex bg-secondary p-1 rounded-lg border border-border">
-                    <Button
-                      variant={chartType === "bar" ? "default" : "ghost"}
-                      size="sm"
-                      className="h-8 px-3"
-                      onClick={() => setChartType("bar")}
-                    >
-                      <BarChart3 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant={chartType === "pie" ? "default" : "ghost"}
-                      size="sm"
-                      className="h-8 px-3"
-                      onClick={() => setChartType("pie")}
-                    >
-                      <PieChartIcon className="w-4 h-4" />
-                    </Button>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyShareLink}
-                    className="h-10 border-border shrink-0"
-                  >
-                    {copied ? (
-                      <Check className="w-4 h-4 mr-1.5 text-success" />
-                    ) : (
-                      <Copy className="w-4 h-4 mr-1.5" />
-                    )}
-                    {copied ? "Copied!" : "Share"}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Stats bar */}
-              <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                {form?.title}
+              </h1>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-[#A1A1A1]">
                 <span className="flex items-center gap-1.5">
                   <Users className="w-4 h-4" />
                   {participants.length} participants
@@ -363,123 +286,196 @@ export default function ResultsPage() {
                   <BarChart3 className="w-4 h-4" />
                   {totalResponses} responses
                 </span>
-                {form?.is_active && (
-                  <Badge variant="secondary" className="bg-success/10 text-success border-success/20 text-xs">
-                    <div className="w-1.5 h-1.5 rounded-full bg-success mr-1 animate-pulse" />
+                {form?.is_active ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs border bg-[#34A853]/10 text-[#34A853] border-[#34A853]/25">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#34A853] pulse-live" />
                     Live
-                  </Badge>
-                )}
-                {!form?.is_active && (
-                  <Badge variant="secondary" className="text-xs">
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs border bg-white/5 text-[#A1A1A1] border-[#1A1A1A]">
                     Finished
-                  </Badge>
+                  </span>
                 )}
               </div>
             </div>
-          </FadeInUp>
 
-          {totalResponses === 0 ? (
-            <FadeInUp delay={0.1}>
-              <div className="glass rounded-xl p-8 text-center border border-border">
-                <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-4">
-                  <BarChart3 className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <h2 className="text-lg font-semibold mb-2">No votes yet</h2>
-                <p className="text-sm text-muted-foreground mb-4 max-w-xs mx-auto">
-                  Share the link with your friends to start collecting votes.
-                </p>
-                <Button onClick={copyShareLink}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy share link
-                </Button>
+            {/* Controls */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Chart type toggle */}
+              <div className="flex items-center p-1 rounded-lg border border-[#1A1A1A] bg-[#0A0A0A]">
+                <button
+                  onClick={() => setChartType("bar")}
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    chartType === "bar"
+                      ? "bg-[#1A1A1A] text-white"
+                      : "text-[#A1A1A1] hover:text-white"
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setChartType("pie")}
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    chartType === "pie"
+                      ? "bg-[#1A1A1A] text-white"
+                      : "text-[#A1A1A1] hover:text-white"
+                  }`}
+                >
+                  <PieChartIcon className="w-4 h-4" />
+                </button>
               </div>
-            </FadeInUp>
-          ) : (
-            <StaggerContainer className="space-y-6">
-              {questionResults.map((qr, qi) => {
-                const maxVotes = Math.max(...qr.votes.map((v) => v.count), 1);
-                const winner = qr.votes[0];
-                const hasWinner = winner && winner.count > 0;
-                
-                // Data for pie chart
-                const pieData = qr.votes.filter(v => v.count > 0).map((v) => ({
-                  name: v.participant_name,
-                  value: v.count
-                }));
 
-                return (
-                  <StaggerItem key={qr.question.id}>
-                    <div className="glass rounded-xl p-6 border border-border">
-                      <div className="flex items-start justify-between gap-3 mb-5">
-                        <h3 className="font-semibold text-base">
-                          {qr.question.question_text}
-                        </h3>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {qr.total} vote{qr.total !== 1 ? "s" : ""}
-                        </span>
-                      </div>
+              {/* Share */}
+              <button
+                onClick={copyShareLink}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#1A1A1A] text-sm text-[#A1A1A1] hover:text-white hover:border-[#333] hover:bg-white/5 transition-all duration-200"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 text-[#34A853]" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </motion.div>
 
-                      {hasWinner && (
-                        <div className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-md bg-secondary border border-border w-fit">
-                          <Trophy className="w-3.5 h-3.5" style={{ color: barColors[0] }} />
-                          <span className="text-xs font-medium" style={{ color: barColors[0] }}>
-                            {winner.participant_name} is leading
-                          </span>
-                        </div>
-                      )}
+        {/* ── No votes ── */}
+        {totalResponses === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="glass-panel rounded-2xl p-12 text-center"
+          >
+            <div className="w-14 h-14 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mx-auto mb-5">
+              <BarChart3 className="w-6 h-6 text-[#A1A1A1]" />
+            </div>
+            <h2 className="text-lg font-semibold mb-2">No votes yet</h2>
+            <p className="text-sm text-[#A1A1A1] mb-7 max-w-xs mx-auto">
+              Share the link with your friends to start collecting votes.
+            </p>
+            <button
+              onClick={copyShareLink}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold btn-obsidian-primary"
+            >
+              <Copy className="w-4 h-4" />
+              Copy share link
+            </button>
+          </motion.div>
+        ) : (
+          <div className="space-y-5">
+            {questionResults.map((qr, qi) => {
+              const winner = qr.votes[0];
+              const hasWinner = winner && winner.count > 0;
+              const winnerColor = ACCENT_COLORS[0];
 
-                      {chartType === "bar" ? (
-                        <div className="space-y-3">
-                          {qr.votes.map((vote, vi) => {
-                            const percentage = qr.total > 0
-                              ? Math.round((vote.count / qr.total) * 100)
-                              : 0;
+              return (
+                <motion.div
+                  key={qr.question.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.55, delay: qi * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                  className="glass-panel rounded-xl p-6 sm:p-8"
+                >
+                  {/* Question header */}
+                  <div className="flex items-start justify-between gap-3 mb-5">
+                    <h2
+                      className="font-semibold text-[17px] text-white leading-snug"
+                      style={displayFont}
+                    >
+                      {qr.question.question_text}
+                    </h2>
+                    <span className="text-xs text-[#A1A1A1] shrink-0 mt-0.5">
+                      {qr.total} vote{qr.total !== 1 ? "s" : ""}
+                    </span>
+                  </div>
 
-                            return (
-                              <div key={vote.participant_id}>
-                                <div className="flex items-center justify-between text-sm mb-1.5">
-                                  <span className="font-medium flex items-center gap-1.5">
-                                    {vi === 0 && vote.count > 0 && (
-                                      <Trophy className="w-3 h-3 text-foreground" />
-                                    )}
-                                    {vote.participant_name}
-                                  </span>
-                                  <span className="text-muted-foreground text-xs">
-                                    {vote.count} ({percentage}%)
-                                  </span>
-                                </div>
-                                <div className="h-3 rounded-full bg-secondary overflow-hidden border border-border/50">
-                                  <motion.div
-                                    className="h-full rounded-full"
-                                    style={{ backgroundColor: barColors[vi % barColors.length] }}
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${qr.total > 0 ? (vote.count / qr.total) * 100 : 0}%` }}
-                                    transition={{ duration: 0.8, delay: qi * 0.1 + vi * 0.05, ease: "easeOut" }}
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="w-full mt-4">
-                          <DonutChart
-                            data={pieData.map((d, i) => ({
-                              name: d.name,
-                              value: d.value,
-                              color: barColors[i % barColors.length],
-                            }))}
-                            total={qr.total}
-                          />
-                        </div>
-                      )}
+                  {/* Leading badge */}
+                  {hasWinner && (
+                    <div
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-[#1A1A1A] bg-[#050505] mb-6"
+                    >
+                      <Trophy className="w-3.5 h-3.5" style={{ color: winnerColor }} />
+                      <span className="text-xs font-semibold tracking-wide" style={{ color: winnerColor }}>
+                        {winner.participant_name} is leading
+                      </span>
                     </div>
-                  </StaggerItem>
-                );
-              })}
-            </StaggerContainer>
-          )}
-        </div>
+                  )}
+
+                  {/* Chart */}
+                  {chartType === "bar" ? (
+                    <div className="space-y-4">
+                      {qr.votes.map((vote, vi) => {
+                        const pct = qr.total > 0 ? Math.round((vote.count / qr.total) * 100) : 0;
+                        const isWinner = vi === 0 && vote.count > 0;
+                        const color = ACCENT_COLORS[vi % ACCENT_COLORS.length];
+
+                        return (
+                          <div key={vote.participant_id}>
+                            <div className="flex items-center justify-between text-sm mb-2">
+                              <span className="flex items-center gap-2 font-medium text-white">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                                  style={{
+                                    backgroundColor: color,
+                                    opacity: vote.count === 0 ? 0.3 : 1,
+                                  }}
+                                />
+                                {vote.participant_name}
+                              </span>
+                              <span className="text-[#A1A1A1] text-xs">
+                                {pct}% ({vote.count})
+                              </span>
+                            </div>
+                            <div className="h-4 rounded-sm bg-[#0A0A0A] border border-[#1A1A1A] overflow-hidden relative">
+                              <motion.div
+                                className="h-full rounded-sm relative"
+                                style={{
+                                  backgroundColor: color,
+                                  opacity: vote.count === 0 ? 0.15 : 1,
+                                }}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${pct}%` }}
+                                transition={{
+                                  duration: 0.85,
+                                  delay: qi * 0.1 + vi * 0.06,
+                                  ease: [0.16, 1, 0.3, 1],
+                                }}
+                              />
+                              {isWinner && vote.count > 0 && (
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-black text-black uppercase tracking-widest">
+                                  Winner
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="w-full mt-2">
+                      <DonutChart
+                        data={qr.votes.filter(v => v.count > 0).map((v, i) => ({
+                          name: v.participant_name,
+                          value: v.count,
+                          color: ACCENT_COLORS[i % ACCENT_COLORS.length],
+                        }))}
+                        total={qr.total}
+                      />
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </main>
     </div>
   );

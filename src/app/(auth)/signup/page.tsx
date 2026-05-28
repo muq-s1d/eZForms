@@ -5,15 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Zap, Mail, Lock, User, ArrowRight, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { FadeInUp } from "@/components/animations/motion-wrapper";
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, ArrowLeft, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+const displayFont = { fontFamily: "var(--font-display, var(--font-sans))" };
+
 const GoogleIcon = () => (
-  <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -38,13 +36,11 @@ export default function SignupPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: `${location.origin}/auth/callback?next=/dashboard`,
-        },
+        options: { redirectTo: `${location.origin}/auth/callback?next=/dashboard` },
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || "Failed to sign up with Google.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to sign up with Google.");
       setLoading(false);
     }
   };
@@ -52,75 +48,35 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (!email || email.trim() === "") {
-      setError("Please enter your email.");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-
-    if (username.length < 5) {
-      setError("Username must be at least 5 characters.");
-      return;
-    }
-
+    if (!email || email.trim() === "") { setError("Please enter your email."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Please enter a valid email address."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (username.length < 5) { setError("Username must be at least 5 characters."); return; }
     setLoading(true);
-
     try {
       const supabase = createClient();
-
-      // Check if username is taken
       const { data: existingUser } = await supabase
-        .from("profiles")
-        .select("username")
-        .eq("username", username)
-        .maybeSingle();
+        .from("profiles").select("username").eq("username", username).maybeSingle();
+      if (existingUser) { setError("This username is already taken."); setLoading(false); return; }
 
-      if (existingUser) {
-        setError("This username is already taken.");
-        setLoading(false);
-        return;
-      }
-
-      // Sign up the user
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            username,
-          },
-        },
+        options: { data: { username } },
       });
+      if (authError) { setError(authError.message); return; }
 
-      if (authError) {
-        setError(authError.message);
-        return;
-      }
-
-      // Create profile entry if it doesn't exist
       if (data.user) {
         const { error: profileError } = await supabase.from("profiles").insert({
           id: data.user.id,
           username,
           email,
         });
-
         if (profileError && !profileError.message.includes("duplicate")) {
           console.error("Profile creation error:", profileError);
         }
       }
 
-      // If email verification is enabled, session will be null
       if (data.user && !data.session) {
         setSuccessMsg("Account created! Please check your email to verify your account.");
       } else {
@@ -134,145 +90,155 @@ export default function SignupPage() {
     }
   };
 
+  /* ── Email verification screen ── */
   if (successMsg) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all z-10 hover:shadow-md hover:border-border">
-          <ArrowLeft className="w-4 h-4" />
-          Back to home
-        </Link>
-        <div className="w-full max-w-md">
-          <FadeInUp>
-            <div className="glass rounded-2xl p-8 text-center border-primary/50 bg-primary/5">
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Mail className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold mb-4">Check your email</h2>
-              <p className="text-muted-foreground mb-8">
-                {successMsg}
-              </p>
-              <Button className="w-full h-11 gradient-bg text-white border-0" onClick={() => router.push("/login")}>
-                Return to log in
-              </Button>
-            </div>
-          </FadeInUp>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-5">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="glass-panel rounded-2xl p-10 text-center max-w-sm w-full"
+        >
+          <motion.div
+            className="w-16 h-16 rounded-full bg-[#34A853]/15 border border-[#34A853]/30 flex items-center justify-center mx-auto mb-6"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 220, delay: 0.15 }}
+          >
+            <Mail className="w-7 h-7 text-[#34A853]" />
+          </motion.div>
+          <h2 className="text-2xl font-extrabold tracking-tight mb-3" style={displayFont}>
+            Check your email
+          </h2>
+          <p className="text-sm text-[#A1A1A1] mb-8">{successMsg}</p>
+          <button
+            onClick={() => router.push("/login")}
+            className="w-full py-3 rounded-xl text-sm font-semibold btn-obsidian-primary"
+          >
+            Return to log in
+          </button>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full opacity-10 blur-[120px] bg-purple-accent pointer-events-none" />
-      <div className="absolute bottom-1/3 left-1/4 w-[300px] h-[300px] rounded-full opacity-10 blur-[100px] bg-coral pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white px-5 relative overflow-hidden">
+      {/* Subtle mesh */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(circle at 40% 60%, rgba(52,168,83,0.035) 0%, transparent 55%)" }}
+      />
 
-      <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all z-10 hover:shadow-md hover:border-border">
-        <ArrowLeft className="w-4 h-4" />
+      {/* Back to home */}
+      <Link
+        href="/"
+        className="absolute top-6 left-6 inline-flex items-center gap-2 text-sm text-[#A1A1A1] hover:text-white border border-[#1A1A1A] hover:border-[#333] bg-[#0A0A0A] px-4 py-2 rounded-full transition-all duration-200 z-10"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
         Back to home
       </Link>
 
-      <div className="w-full max-w-md">
-        <FadeInUp>
+      <div className="w-full max-w-sm relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
           {/* Logo */}
-          <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
-            <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Image src="/ezicon.png" alt="eZForms Logo" width={40} height={40} className="object-cover" />
+          <Link href="/" className="flex items-center justify-center gap-2.5 mb-8 group">
+            <div className="w-9 h-9 rounded-xl overflow-hidden group-hover:scale-110 transition-transform">
+              <Image src="/ezicon.png" alt="eZForms Logo" width={36} height={36} className="object-cover" />
             </div>
-            <span className="text-xl font-bold">
-              eZ<span className="text-primary font-bold">Forms</span>
+            <span className="text-xl font-extrabold tracking-tight" style={displayFont}>
+              eZForms
             </span>
           </Link>
-        </FadeInUp>
 
-        <FadeInUp delay={0.1}>
-          <div className="glass rounded-2xl p-8 glow-gradient">
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-bold mb-2">Create your account</h1>
-              <p className="text-sm text-muted-foreground">
-                Start creating voting forms for your squad
-              </p>
+          {/* Card */}
+          <div className="glass-panel rounded-2xl p-8">
+            <div className="text-center mb-7">
+              <h1 className="text-2xl font-extrabold tracking-tight mb-1.5" style={displayFont}>
+                Create your account
+              </h1>
+              <p className="text-sm text-[#A1A1A1]">Start creating voting forms for your squad</p>
             </div>
 
-            <Button
+            {/* Google */}
+            <button
               type="button"
-              variant="outline"
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="w-full h-11 bg-transparent border-border/50 hover:bg-secondary/50 font-medium mb-5 flex items-center justify-center gap-2 text-white"
+              className="w-full h-11 inline-flex items-center justify-center gap-2.5 rounded-xl border border-[#1A1A1A] hover:border-[#333] bg-[#050505] hover:bg-white/5 text-sm font-medium text-white transition-all duration-200 mb-5 disabled:opacity-50"
             >
               <GoogleIcon />
               Sign up with Google
-            </Button>
+            </button>
 
+            {/* Divider */}
             <div className="relative mb-6">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border/50" />
+                <span className="w-full border-t border-[#1A1A1A]" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#121212] px-2 text-muted-foreground">
+              <div className="relative flex justify-center">
+                <span className="bg-[#0A0A0A] px-3 text-xs text-[#444748] uppercase tracking-wider">
                   Or continue with email
                 </span>
               </div>
             </div>
 
             <form onSubmit={handleSignup} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-medium">
-                  Username
-                </Label>
+              {/* Username */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white">Username</label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="username"
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444748]" />
+                  <input
                     type="text"
-                    placeholder="yourname"
+                    placeholder="yourname (min 5 chars)"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10 h-11 bg-input border-border focus:border-primary/50 focus:ring-primary/20"
+                    className="minimal-input w-full rounded-xl pl-10 pr-4 py-3 text-sm"
                     required
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </Label>
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="email"
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444748]" />
+                  <input
                     type="email"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11 bg-input border-border focus:border-primary/50 focus:ring-primary/20"
+                    className="minimal-input w-full rounded-xl pl-10 pr-4 py-3 text-sm"
                     required
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </Label>
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="password"
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444748]" />
+                  <input
                     type={showPassword ? "text" : "password"}
                     placeholder="Min 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-11 bg-input border-border focus:border-primary/50 focus:ring-primary/20"
+                    className="minimal-input w-full rounded-xl pl-10 pr-10 py-3 text-sm"
                     required
                     minLength={6}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#444748] hover:text-white transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -281,44 +247,42 @@ export default function SignupPage() {
 
               {error && (
                 <motion.p
-                  initial={{ opacity: 0, y: -5 }}
+                  initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2"
+                  className="text-sm text-[#EA4335] bg-[#EA4335]/10 border border-[#EA4335]/20 rounded-xl px-4 py-2.5"
                 >
                   {error}
                 </motion.p>
               )}
 
-              <Button
+              <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 gradient-bg text-white border-0 hover:opacity-90 transition-opacity font-medium"
+                className="w-full h-11 rounded-xl text-sm font-semibold btn-obsidian-primary disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <motion.div
-                    className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                    className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full"
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   />
                 ) : (
                   <>
                     Create account
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
-              </Button>
+              </button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link href="/login" className="text-primary hover:underline font-medium">
-                  Log in
-                </Link>
-              </p>
-            </div>
+            <p className="text-center text-sm text-[#A1A1A1] mt-6">
+              Already have an account?{" "}
+              <Link href="/login" className="text-white font-medium hover:underline">
+                Log in
+              </Link>
+            </p>
           </div>
-        </FadeInUp>
+        </motion.div>
       </div>
     </div>
   );
