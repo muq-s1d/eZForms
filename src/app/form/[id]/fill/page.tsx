@@ -42,12 +42,6 @@ export default function FillFormPage() {
   const [passwordError, setPasswordError] = useState("");
 
   const loadForm = useCallback(async () => {
-    // Check for prior submission
-    const submissionKey = `ezforms-submitted-${formId}`;
-    if (typeof window !== "undefined" && localStorage.getItem(submissionKey)) {
-      setStage("already-submitted");
-      return;
-    }
 
     const supabase = createClient();
 
@@ -152,7 +146,15 @@ export default function FillFormPage() {
         return;
       }
 
-      localStorage.setItem(`ezforms-submitted-${formId}`, "true");
+      // Mark the participant as having voted
+      const participantId = participants.find(p => p.name === identity)?.id;
+      if (participantId) {
+        await supabase
+          .from("participants")
+          .update({ has_voted: true })
+          .eq("id", participantId);
+      }
+
       setStage("submitted");
     } catch {
       setError("Something went wrong.");
@@ -191,24 +193,7 @@ export default function FillFormPage() {
     );
   }
 
-  // ===== ALREADY SUBMITTED =====
-  if (stage === "already-submitted") {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <FadeInUp>
-          <div className="text-center max-w-sm">
-            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-success" />
-            </div>
-            <h1 className="text-xl font-bold mb-2">Already voted!</h1>
-            <p className="text-sm text-muted-foreground">
-              You&apos;ve already submitted your responses for this form. Thanks for voting!
-            </p>
-          </div>
-        </FadeInUp>
-      </div>
-    );
-  }
+
 
   // ===== PASSWORD GATE =====
   if (stage === "password") {
@@ -312,16 +297,22 @@ export default function FillFormPage() {
                 {participants.map((p) => (
                   <motion.button
                     key={p.id}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setIdentity(p.name)}
+                    whileHover={!p.has_voted ? { scale: 1.02 } : {}}
+                    whileTap={!p.has_voted ? { scale: 0.98 } : {}}
+                    onClick={() => { if (!p.has_voted) setIdentity(p.name); }}
+                    disabled={p.has_voted}
                     className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 text-left border ${
-                      identity === p.name
+                      p.has_voted
+                        ? "bg-secondary/40 text-muted-foreground border-border/40 cursor-not-allowed opacity-60"
+                        : identity === p.name
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-secondary text-secondary-foreground border-border hover:border-primary/30"
                     }`}
                   >
-                    {p.name}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate">{p.name}</span>
+                      {p.has_voted && <Lock className="w-3.5 h-3.5 shrink-0 opacity-50" />}
+                    </div>
                   </motion.button>
                 ))}
               </div>

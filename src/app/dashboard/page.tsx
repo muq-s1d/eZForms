@@ -129,13 +129,18 @@ export default function DashboardPage() {
   const handleDeleteAccount = async () => {
     if (!confirm("DANGER: Are you sure you want to permanently delete your account and all forms? This cannot be undone.")) return;
     
-    // Deleting account via Supabase Auth usually requires backend admin API or calling a custom edge function.
-    // For MVP purposes, if RLS is configured or if we just want to mock the UX:
-    // await supabase.rpc('delete_user'); // (Assuming such an RPC existed)
+    const supabase = createClient();
+    const { error } = await supabase.rpc('delete_user');
     
-    // In many minimal setups, users can't delete themselves directly from the client without an RPC function.
-    // We will just alert the user that this requires backend admin support for the standard supabase setup.
-    alert("Account deletion requested. (For the MVP, please delete the user manually in the Supabase Auth dashboard as client-side user deletion requires a backend Edge Function).");
+    if (error) {
+      alert("Failed to delete account. Ensure the database function is configured.");
+      console.error(error);
+      return;
+    }
+
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
   };
 
   if (loading) {
