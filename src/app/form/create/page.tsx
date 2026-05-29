@@ -25,6 +25,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { FormStep } from "@/lib/types/database";
+import { usePostHog } from 'posthog-js/react';
 
 const displayFont = { fontFamily: "var(--font-display, var(--font-sans))" };
 
@@ -39,6 +40,7 @@ const ACCENT_COLORS = ["#4285F4", "#EA4335", "#FBBC05", "#34A853", "#9C27B0", "#
 
 export default function CreateFormPage() {
   const router = useRouter();
+  const posthog = usePostHog();
   const [currentStep, setCurrentStep] = useState<FormStep>("details");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -127,7 +129,7 @@ export default function CreateFormPage() {
           is_active: true,
           is_public_results: isPublicResults,
           voting_type: votingType,
-          is_public_feed: votingType === "roster" ? isPublicFeed : false,
+          is_public_feed: isPublicFeed,
           password: password.trim() || null,
           expires_at: timerDuration 
             ? new Date(Date.now() + timerDuration * 60 * 60 * 1000).toISOString() 
@@ -148,9 +150,17 @@ export default function CreateFormPage() {
       );
       if (qError) { setError("Failed to add questions: " + qError.message); return; }
 
+      posthog?.capture('form_created', { 
+        form_id: form.id, 
+        voting_type: votingType, 
+        participant_count: participants.length,
+        question_count: questions.length 
+      });
+
       setCreatedFormId(form.id);
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

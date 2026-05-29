@@ -241,11 +241,13 @@ export default function DashboardPage() {
 
                 {/* Stats */}
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A1A1A1] z-10 mt-auto">
-                  <span className="flex items-center gap-1 bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]">
-                    <Users className="w-3.5 h-3.5" />
-                    {form.participant_count}
-                  </span>
-                  <span className="flex items-center gap-1 bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]">
+                  {(!form.voting_type || form.voting_type === 'roster') && (
+                    <span className="flex items-center gap-1 bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]" title="Participants in roster">
+                      <Users className="w-3.5 h-3.5" />
+                      {form.participant_count}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1 bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]" title="Total votes submitted">
                     <BarChart3 className="w-3.5 h-3.5" />
                     {form.response_count}
                   </span>
