@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
@@ -16,8 +16,47 @@ interface NavbarProps {
 export function Navbar({ user: initialUser, onLogout }: NavbarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [localUser, setLocalUser] = useState<{ email: string } | null>(initialUser || null);
+  // ── Hide-on-scroll: zero-rerender RAF-throttled approach ──
+  // We manipulate the DOM classList directly (no React state) so scroll
+  // events never trigger component rerenders — pure GPU work only.
+  const navRef = useRef<HTMLDivElement>(null);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    const SCROLL_THRESHOLD = 100; // px before hide logic activates
+
+    const handleScroll = () => {
+      // RAF throttle: only one calculation per animation frame
+      if (ticking.current) return;
+      ticking.current = true;
+
+      requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        const nav = navRef.current;
+
+        if (nav) {
+          const scrollingDown = currentScrollY > lastScrollY.current;
+          const pastThreshold = currentScrollY > SCROLL_THRESHOLD;
+
+          if (scrollingDown && pastThreshold) {
+            nav.classList.add("navbar-hidden");
+          } else {
+            nav.classList.remove("navbar-hidden");
+          }
+        }
+
+        lastScrollY.current = currentScrollY;
+        ticking.current = false;
+      });
+    };
+
+    // passive: true — browser won’t wait for JS before scrolling
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     async function fetchUser() {
@@ -70,7 +109,7 @@ export function Navbar({ user: initialUser, onLogout }: NavbarProps) {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <div className="navbar-float px-6 flex items-center justify-between h-[60px]">
+    <div ref={navRef} className="navbar-float px-6 flex items-center justify-between h-[60px]">
       {/* Logo */}
       <Link
         href={localUser ? "/dashboard" : "/"}
