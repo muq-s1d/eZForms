@@ -2,18 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Lock, Clock, ArrowLeft } from "lucide-react";
+import { ArrowRight, Lock, Clock, ArrowLeft, Search } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Form } from "@/lib/types/database";
 import { CountdownBadge } from "@/components/ui/countdown-badge";
+import { useDebounce } from "@/hooks/use-debounce";
+import { Highlight } from "@/components/ui/highlight";
 
 export default function HomePage() {
   const [liveForms, setLiveForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "roster" | "general">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 400);
 
   const filteredForms = filter === "all" 
     ? liveForms 
@@ -21,19 +25,26 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchLiveForms() {
+      setLoading(true);
       const supabase = createClient();
-      const { data } = await supabase
+      let query = supabase
         .from("forms")
         .select("*")
         .eq("is_active", true)
+        .eq("is_public_feed", true)
         .order("created_at", { ascending: false })
         .limit(20);
       
+      if (debouncedSearch) {
+        query = query.ilike("title", `%${debouncedSearch}%`);
+      }
+
+      const { data } = await query;
       if (data) setLiveForms(data);
       setLoading(false);
     }
     fetchLiveForms();
-  }, []);
+  }, [debouncedSearch]);
 
   return (
     <div className="flex flex-col min-h-screen text-white">
@@ -76,9 +87,21 @@ export default function HomePage() {
               Explore active forms happening right now. Click on any form to enter the password and cast your votes.
             </p>
 
-            {/* Feed Toggle */}
-            <div className="flex p-1 bg-[#050505] border border-[#1A1A1A] rounded-xl mx-auto w-fit shadow-md">
-              {(["all", "roster", "general"] as const).map((f) => (
+            {/* Feed Filters & Search */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 justify-center mx-auto w-full max-w-2xl">
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A1A1A1]" />
+                <input
+                  type="text"
+                  placeholder="Search forms by title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#050505] border border-[#1A1A1A] rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#333] transition-colors"
+                />
+              </div>
+
+              <div className="flex p-1 bg-[#050505] border border-[#1A1A1A] rounded-xl shadow-md shrink-0">
+                {(["all", "roster", "general"] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
@@ -96,6 +119,7 @@ export default function HomePage() {
                   {f === "all" ? "All Forms" : f === "roster" ? "Squad" : "Open"}
                 </button>
               ))}
+              </div>
             </div>
           </div>
 
@@ -118,7 +142,7 @@ export default function HomePage() {
                   >
                     <div>
                       <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                        {form.title}
+                        <Highlight text={form.title} query={debouncedSearch} />
                       </h3>
                       {form.description && (
                         <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
