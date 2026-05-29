@@ -67,20 +67,44 @@ export default function FillFormPage() {
       return;
     }
 
+    if (formRes.data.expires_at && new Date(formRes.data.expires_at).getTime() < Date.now()) {
+      setError("This form has expired and is no longer accepting responses.");
+      setStage("error");
+      return;
+    }
+
     setForm(formRes.data);
     setParticipants(partRes.data || []);
     setQuestions(qRes.data || []);
+
+    if (formRes.data.voting_type === "general") {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const hasVoted = localStorage.getItem(`ezforms-voted-${formId}`);
+      if (hasVoted && !currentUser) {
+        setStage("already-submitted");
+        return;
+      }
+    }
+
+    const routeToNextStage = () => {
+      if (formRes.data.voting_type === "general") {
+        setIdentity("Anonymous Voter");
+        setStage("voting");
+      } else {
+        setStage("identity");
+      }
+    };
 
     // Check if password protected
     if (formRes.data.password && formRes.data.password.trim() !== "") {
       const storedAuth = sessionStorage.getItem(`ezforms-auth-${formId}`);
       if (storedAuth === "true") {
-        setStage("identity");
+        routeToNextStage();
       } else {
         setStage("password");
       }
     } else {
-      setStage("identity");
+      routeToNextStage();
     }
   }, [formId]);
 
@@ -93,14 +117,21 @@ export default function FillFormPage() {
     setPasswordError("");
     if (passwordInput === form?.password) {
       sessionStorage.setItem(`ezforms-auth-${formId}`, "true");
-      setStage("identity");
+      if (form?.voting_type === "general") {
+        setIdentity("Anonymous Voter");
+        setStage("voting");
+      } else {
+        setStage("identity");
+      }
     } else {
       setPasswordInput("");
       setPasswordError("Incorrect password");
     }
   };
 
-  const answerOptions = participants.filter((p) => p.name !== identity);
+  const answerOptions = form?.voting_type === "general" 
+    ? participants 
+    : participants.filter((p) => p.name !== identity);
 
   const selectAnswer = (questionId: string, participantId: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: participantId }));
@@ -147,12 +178,16 @@ export default function FillFormPage() {
       }
 
       // Mark the participant as having voted
-      const participantId = participants.find(p => p.name === identity)?.id;
-      if (participantId) {
-        await supabase
-          .from("participants")
-          .update({ has_voted: true })
-          .eq("id", participantId);
+      if (form?.voting_type === "general") {
+        localStorage.setItem(`ezforms-voted-${formId}`, "true");
+      } else {
+        const participantId = participants.find(p => p.name === identity)?.id;
+        if (participantId) {
+          await supabase
+            .from("participants")
+            .update({ has_voted: true })
+            .eq("id", participantId);
+        }
       }
 
       setStage("submitted");
@@ -288,6 +323,35 @@ export default function FillFormPage() {
     );
   }
 
+  // ===== ALREADY SUBMITTED =====
+  if (stage === "already-submitted") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 text-white">
+        <div className="w-full max-w-md">
+          <FadeInUp>
+            <div className="glass-panel rounded-2xl p-6 text-center">
+              <div className="w-16 h-16 rounded-2xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mx-auto mb-6 relative z-10">
+                <Check className="w-8 h-8 text-[#34A853]" />
+              </div>
+              <h2 className="font-bold text-xl mb-3 text-white tracking-tight">Already Voted</h2>
+              <p className="text-sm text-[#A1A1A1] mb-8">
+                You have already submitted your votes for this form!
+              </p>
+              <div className="flex flex-col gap-3">
+                <Link href={`/form/${formId}/results`} className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-primary inline-flex justify-center items-center">
+                  View live results
+                </Link>
+                <Link href="/home" className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-ghost inline-flex justify-center items-center">
+                  Back to live feed
+                </Link>
+              </div>
+            </div>
+          </FadeInUp>
+        </div>
+      </div>
+    );
+  }
+
   // ===== IDENTITY SELECTION =====
   if (stage === "identity") {
     return (
@@ -307,55 +371,83 @@ export default function FillFormPage() {
 
           <FadeInUp delay={0.1}>
             <div className="glass-panel rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <User className="w-4 h-4 text-white" />
-                <h2 className="font-semibold text-sm">Who are you?</h2>
-              </div>
-              <p className="text-xs text-[#A1A1A1] mb-5">
-                Pick your name below. You won&apos;t be able to vote for yourself.
-              </p>
+              {participants.length > 0 && participants.every((p) => p.has_voted) ? (
+                <div className="text-center py-6">
+                  <div className="w-16 h-16 rounded-2xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mx-auto mb-6 relative z-10">
+                    <Check className="w-8 h-8 text-[#34A853]" />
+                  </div>
+                  <h2 className="font-bold text-xl mb-3 text-white tracking-tight">Voting Complete</h2>
+                  <p className="text-sm text-[#A1A1A1] mb-8">
+                    Every identity for this form has already been used. All participants have cast their votes!
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <Link
+                      href={`/form/${formId}/results`}
+                      className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-primary inline-flex justify-center items-center"
+                    >
+                      View live results
+                    </Link>
+                    <Link
+                      href="/home"
+                      className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-ghost inline-flex justify-center items-center"
+                    >
+                      Back to live feed
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="w-4 h-4 text-white" />
+                    <h2 className="font-semibold text-sm">Who are you?</h2>
+                  </div>
+                  <p className="text-xs text-[#A1A1A1] mb-5">
+                    Pick your name below. You won&apos;t be able to vote for yourself.
+                  </p>
 
-              <div className="grid grid-cols-2 gap-2">
-                {participants.map((p) => (
-                  <motion.button
-                    key={p.id}
-                    whileHover={!p.has_voted ? { scale: 1.02 } : {}}
-                    whileTap={!p.has_voted ? { scale: 0.98 } : {}}
-                    onClick={() => { if (!p.has_voted) setIdentity(p.name); }}
-                    disabled={p.has_voted}
-                    className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 text-left border ${
-                      p.has_voted
-                        ? "bg-[#0A0A0A] text-[#444748] border-[#1A1A1A] cursor-not-allowed opacity-60"
-                        : identity === p.name
-                        ? "bg-white text-black border-white"
-                        : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate">{p.name}</span>
-                      {p.has_voted && <Lock className="w-3.5 h-3.5 shrink-0 opacity-50" />}
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {participants.map((p) => (
+                      <motion.button
+                        key={p.id}
+                        whileHover={!p.has_voted ? { scale: 1.02 } : {}}
+                        whileTap={!p.has_voted ? { scale: 0.98 } : {}}
+                        onClick={() => { if (!p.has_voted) setIdentity(p.name); }}
+                        disabled={p.has_voted}
+                        className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 text-left border ${
+                          p.has_voted
+                            ? "bg-[#0A0A0A] text-[#444748] border-[#1A1A1A] cursor-not-allowed opacity-60"
+                            : identity === p.name
+                            ? "bg-white text-black border-white"
+                            : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate">{p.name}</span>
+                          {p.has_voted && <Lock className="w-3.5 h-3.5 shrink-0 opacity-50" />}
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
 
-              {identity && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-6"
-                >
-                  <button
-                    onClick={() => {
-                      setStage("voting");
-                      setCurrentQ(0);
-                    }}
-                    className="w-full h-11 rounded-xl text-sm font-semibold btn-obsidian-primary flex items-center justify-center"
-                  >
-                    Start voting
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </button>
-                </motion.div>
+                  {identity && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-6"
+                    >
+                      <button
+                        onClick={() => {
+                          setStage("voting");
+                          setCurrentQ(0);
+                        }}
+                        className="w-full h-11 rounded-xl text-sm font-semibold btn-obsidian-primary flex items-center justify-center"
+                      >
+                        Start voting
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </button>
+                    </motion.div>
+                  )}
+                </>
               )}
             </div>
           </FadeInUp>

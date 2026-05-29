@@ -17,6 +17,8 @@ export interface Form {
   access_code: string | null;
   is_active: boolean;
   is_public_results: boolean;
+  voting_type?: "roster" | "general";
+  expires_at?: string | null;
   created_at: string;
 }
 
@@ -86,7 +88,7 @@ export interface FormBuilderData {
   access_code?: string;
 }
 
-export type FormStep = 'details' | 'participants' | 'questions' | 'review';
+export type FormStep = 'details' | 'participants' | 'questions' | 'settings' | 'review';
 
 // ===== Voting Types =====
 

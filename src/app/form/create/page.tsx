@@ -19,6 +19,10 @@ import {
   Copy,
   Globe,
   Lock,
+  Settings,
+  Clock,
+  Unlock,
+  ChevronRight,
 } from "lucide-react";
 import type { FormStep } from "@/lib/types/database";
 
@@ -47,6 +51,10 @@ export default function CreateFormPage() {
   const [description, setDescription] = useState("");
   const [password, setPassword] = useState("");
   const [isPublicResults, setIsPublicResults] = useState(false);
+  const [votingType, setVotingType] = useState<"roster" | "general">("roster");
+  const [timerDuration, setTimerDuration] = useState<number | null>(null);
+  const [isTimerScrolledToEnd, setIsTimerScrolledToEnd] = useState(false);
+
   const [participantInput, setParticipantInput] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
   const [questionInput, setQuestionInput] = useState("");
@@ -66,7 +74,7 @@ export default function CreateFormPage() {
 
   const canProceed = () => {
     switch (currentStep) {
-      case "details":      return title.trim().length > 0 && password.trim().length > 0;
+      case "details":      return title.trim().length > 0;
       case "participants": return participants.length >= 2;
       case "questions":    return questions.length >= 1;
       case "review":       return true;
@@ -115,9 +123,13 @@ export default function CreateFormPage() {
           creator_id: authUser.id,
           title,
           description: description || null,
-          password: password.trim(),
+          password: password.trim() || null,
           is_active: true,
           is_public_results: isPublicResults,
+          voting_type: votingType,
+          expires_at: timerDuration 
+            ? new Date(Date.now() + timerDuration * 60 * 60 * 1000).toISOString() 
+            : null,
         })
         .select()
         .single();
@@ -153,7 +165,7 @@ export default function CreateFormPage() {
   /* ── Success screen ── */
   if (createdFormId) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#050505] text-white">
+      <div className="min-h-screen flex flex-col text-white">
         <Navbar user={user} />
         <main className="flex-1 flex items-center justify-center px-5 pt-20">
           <motion.div
@@ -299,11 +311,95 @@ export default function CreateFormPage() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-extrabold tracking-tight mb-1" style={displayFont}>
-                      Name your form
+                      Create your form
                     </h2>
                     <p className="text-sm text-[#A1A1A1]">
-                      Give it a fun title your friends will recognize.
+                      Configure how your form works and give it a fun title.
                     </p>
+                  </div>
+
+                  <div className="space-y-3 mb-2">
+                    <label className="text-sm font-medium text-white block mb-1">Voting Mode</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setVotingType("roster")}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          votingType === "roster"
+                            ? "bg-white text-black border-white shadow-md"
+                            : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
+                        }`}
+                      >
+                        <Lock className="w-5 h-5 mb-3" />
+                        <h3 className="font-semibold text-sm mb-1">Squad Vote</h3>
+                        <p className={`text-xs ${votingType === "roster" ? "text-[#444]" : "text-[#444748]"}`}>
+                          Voters pick their name from a roster.
+                        </p>
+                      </button>
+                      <button
+                        onClick={() => setVotingType("general")}
+                        className={`p-4 rounded-xl border text-left transition-all ${
+                          votingType === "general"
+                            ? "bg-white text-black border-white shadow-md"
+                            : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
+                        }`}
+                      >
+                        <Unlock className="w-5 h-5 mb-3" />
+                        <h3 className="font-semibold text-sm mb-1">Open Vote</h3>
+                        <p className={`text-xs ${votingType === "general" ? "text-[#444]" : "text-[#444748]"}`}>
+                          Anyone with the link votes anonymously.
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pb-2">
+                    <label className="text-sm font-medium text-white block mb-1">Time Limit</label>
+                    <div className="relative group">
+                      <div 
+                        className="flex overflow-x-auto snap-x gap-2 pb-3 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                        onScroll={(e) => {
+                          const target = e.currentTarget;
+                          setIsTimerScrolledToEnd(target.scrollLeft + target.clientWidth >= target.scrollWidth - 10);
+                        }}
+                      >
+                        {[
+                          { label: "No Limit", value: null },
+                          { label: "30m", value: 0.5 },
+                          { label: "1h", value: 1 },
+                          { label: "2h", value: 2 },
+                          { label: "3h", value: 3 },
+                          { label: "4h", value: 4 },
+                          { label: "5h", value: 5 },
+                          { label: "10h", value: 10 },
+                          { label: "20h", value: 20 },
+                          { label: "24h", value: 24 },
+                        ].map((opt) => (
+                          <button
+                            key={opt.label}
+                            onClick={() => setTimerDuration(opt.value)}
+                            className={`snap-start shrink-0 px-6 py-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1.5 min-w-[80px] ${
+                              timerDuration === opt.value
+                                ? "bg-white text-black border-white shadow-md"
+                                : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
+                            }`}
+                          >
+                            <span className="text-sm font-medium whitespace-nowrap">{opt.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* Fade indicator for scrollability */}
+                      <div className={`absolute right-0 top-0 bottom-3 w-16 bg-gradient-to-l from-[#050505] via-[#050505]/80 to-transparent pointer-events-none flex items-center justify-end pr-1 transition-opacity duration-300 ${isTimerScrolledToEnd ? "opacity-0" : "opacity-100"}`}>
+                        <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 animate-[pulse_2s_ease-in-out_infinite]">
+                          <ChevronRight className="w-4 h-4 ml-0.5" />
+                        </div>
+                      </div>
+                    </div>
+                    {timerDuration && (
+                      <p className="text-xs text-[#A1A1A1] mt-1">
+                        Voting will automatically lock after {timerDuration < 1 ? timerDuration * 60 + " minutes" : timerDuration + " hours"}.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -384,10 +480,12 @@ export default function CreateFormPage() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-extrabold tracking-tight mb-1" style={displayFont}>
-                      Add your squad
+                      {votingType === "roster" ? "Add your squad" : "Add your options"}
                     </h2>
                     <p className="text-sm text-[#A1A1A1]">
-                      Add at least 2 people — they&apos;re both the voters and the answer options.
+                      {votingType === "roster" 
+                        ? "Add at least 2 people — they're both the voters and the answer options."
+                        : "Add at least 2 options for people to vote on (e.g., fruits, places, movies)."}
                     </p>
                   </div>
 
@@ -569,6 +667,21 @@ export default function CreateFormPage() {
                             {q}
                           </p>
                         ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-4 rounded-xl border border-[#1A1A1A] bg-[#050505]">
+                        <p className="text-[10px] text-[#444748] uppercase tracking-widest font-semibold mb-1">Mode</p>
+                        <p className="text-sm text-white font-medium">
+                          {votingType === "roster" ? "Squad Vote" : "Open Vote"}
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-xl border border-[#1A1A1A] bg-[#050505]">
+                        <p className="text-[10px] text-[#444748] uppercase tracking-widest font-semibold mb-1">Time Limit</p>
+                        <p className="text-sm text-white font-medium">
+                          {timerDuration ? (timerDuration < 1 ? timerDuration * 60 + ' Mins' : timerDuration + (timerDuration === 1 ? ' Hour' : ' Hours')) : "No Limit"}
+                        </p>
                       </div>
                     </div>
 
