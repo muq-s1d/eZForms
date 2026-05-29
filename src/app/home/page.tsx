@@ -8,10 +8,16 @@ import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Form } from "@/lib/types/database";
+import { CountdownBadge } from "@/components/ui/countdown-badge";
 
 export default function HomePage() {
   const [liveForms, setLiveForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "roster" | "general">("all");
+
+  const filteredForms = filter === "all" 
+    ? liveForms 
+    : liveForms.filter(f => (f.voting_type || "roster") === filter);
 
   useEffect(() => {
     async function fetchLiveForms() {
@@ -66,22 +72,44 @@ export default function HomePage() {
             </h1>
             
             {/* Description */}
-            <p className="text-[#A1A1A1] text-lg max-w-lg">
+            <p className="text-[#A1A1A1] text-lg max-w-lg mb-8">
               Explore active forms happening right now. Click on any form to enter the password and cast your votes.
             </p>
+
+            {/* Feed Toggle */}
+            <div className="flex p-1 bg-[#050505] border border-[#1A1A1A] rounded-xl mx-auto w-fit shadow-md">
+              {(["all", "roster", "general"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`relative px-5 sm:px-6 py-2.5 text-sm font-semibold rounded-lg transition-all z-10 ${
+                    filter === f ? "text-black" : "text-[#A1A1A1] hover:text-white"
+                  }`}
+                >
+                  {filter === f && (
+                    <motion.div
+                      layoutId="activeFilter"
+                      className="absolute inset-0 bg-white rounded-lg z-[-1]"
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                  {f === "all" ? "All Forms" : f === "roster" ? "Squad" : "Open"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
-          ) : liveForms.length === 0 ? (
+          ) : filteredForms.length === 0 ? (
             <div className="text-center py-16 glass-panel rounded-xl">
-              <p className="text-muted-foreground">No live forms right now.</p>
+              <p className="text-muted-foreground">No forms match this filter right now.</p>
             </div>
           ) : (
             <div className="grid gap-4">
-              {liveForms.map((form) => (
+              {filteredForms.map((form) => (
                 <Link key={form.id} href={`/form/${form.id}/fill`} className="block group">
                   <motion.div
                     whileHover={{ scale: 1.01 }}
@@ -97,11 +125,17 @@ export default function HomePage() {
                           {form.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium tracking-wide">
+                        <span className="flex items-center gap-1 text-[#A1A1A1] bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]">
+                          <Clock className="w-3 h-3" />
                           {new Date(form.created_at).toLocaleDateString()}
                         </span>
+                        
+                        <span className="flex items-center gap-1 text-[#A1A1A1] bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]">
+                          {(!form.voting_type || form.voting_type === 'roster') ? "Squad Vote" : "Open Vote"}
+                        </span>
+
+                        <CountdownBadge expiresAt={form.expires_at || null} />
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-2 text-sm font-medium">
