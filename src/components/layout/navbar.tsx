@@ -193,7 +193,7 @@ export function Navbar({ user: initialUser, onLogout }: NavbarProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="absolute top-[72px] left-0 right-0 glass-panel rounded-xl mx-0 overflow-hidden md:hidden"
+            className="absolute top-[72px] left-0 right-0 bg-[#0A0A0A] shadow-2xl border border-[#262626] rounded-xl mx-0 overflow-hidden md:hidden z-50"
           >
             <div className="px-4 py-4 flex flex-col gap-1">
               {navLinks.map((link) => (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Lock, Clock, ArrowLeft, Search } from "lucide-react";
+import { ArrowRight, Lock, Clock, ArrowLeft, Search, Users } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
@@ -29,7 +29,7 @@ export default function HomePage() {
       const supabase = createClient();
       let query = supabase
         .from("forms")
-        .select("*")
+        .select("*, responses(count)")
         .eq("is_active", true)
         .eq("is_public_feed", true)
         .order("created_at", { ascending: false })
@@ -157,6 +157,11 @@ export default function HomePage() {
                         
                         <span className="flex items-center gap-1 text-[#A1A1A1] bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]">
                           {(!form.voting_type || form.voting_type === 'roster') ? "Squad Vote" : "Open Vote"}
+                        </span>
+                        
+                        <span className="flex items-center gap-1 text-[#A1A1A1] bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A]">
+                          <Users className="w-3 h-3" />
+                          {(form as any).responses?.[0]?.count || 0} voted
                         </span>
 
                         <CountdownBadge expiresAt={form.expires_at || null} />

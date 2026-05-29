@@ -15,10 +15,12 @@ import {
   Lock,
   PieChart as PieChartIcon,
   Share2,
+  Zap,
 } from "lucide-react";
 import type { Form, Participant, Question } from "@/lib/types/database";
 import Link from "next/link";
 import { DonutChart } from "@/components/ui/donut-chart";
+import { usePostHog } from 'posthog-js/react';
 
 interface VoteCount {
   participant_id: string;
@@ -51,6 +53,7 @@ export default function ResultsPage() {
   const params = useParams();
   const router = useRouter();
   const formId = params.id as string;
+  const posthog = usePostHog();
 
   const [stage, setStage] = useState<Stage>("loading");
   const [error, setError] = useState("");
@@ -120,6 +123,16 @@ export default function ResultsPage() {
   }, [formId]);
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
+
+  useEffect(() => {
+    if (stage === "results" && form) {
+      posthog?.capture('results_viewed', { 
+        form_id: form.id, 
+        form_title: form.title, 
+        voting_type: form.voting_type 
+      });
+    }
+  }, [stage, form, posthog]);
 
   useEffect(() => {
     if (stage !== "results") return;
@@ -474,6 +487,25 @@ export default function ResultsPage() {
                 </motion.div>
               );
             })}
+          </div>
+        )}
+
+        {/* Viral Conversion CTA for non-creators */}
+        {user?.id !== form?.creator_id && (
+          <div className="mt-12 mb-16 text-center w-full max-w-3xl mx-auto">
+            <button 
+              onClick={() => {
+                posthog?.capture('viral_conversion_clicked', {
+                  source_form_id: form?.id,
+                  cta_location: 'results_bottom'
+                });
+                setTimeout(() => router.push("/"), 400);
+              }}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl btn-obsidian-primary text-sm font-semibold shadow-2xl shadow-[#34A853]/10 border border-[#34A853]/20 hover:border-[#34A853]/40 transition-colors"
+            >
+              <Zap className="w-4 h-4 text-[#34A853]" />
+              Create your own form — It's free
+            </button>
           </div>
         )}
       </main>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,12 +20,15 @@ import {
 } from "lucide-react";
 import type { Form, Participant, Question } from "@/lib/types/database";
 import Link from "next/link";
+import { usePostHog } from 'posthog-js/react';
 
 type FillStage = "loading" | "password" | "identity" | "voting" | "submitted" | "already-submitted" | "error";
 
 export default function FillFormPage() {
   const params = useParams();
+  const router = useRouter();
   const formId = params.id as string;
+  const posthog = usePostHog();
 
   const [stage, setStage] = useState<FillStage>("loading");
   const [error, setError] = useState("");
@@ -77,6 +80,14 @@ export default function FillFormPage() {
 
     setParticipants(partRes.data || []);
     setQuestions(qRes.data || []);
+
+    if (formRes.data) {
+      posthog?.capture('form_viewed', { 
+        form_id: formRes.data.id, 
+        form_title: formRes.data.title, 
+        voting_type: formRes.data.voting_type 
+      });
+    }
 
     if (formRes.data.voting_type === "general") {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -190,6 +201,13 @@ export default function FillFormPage() {
             .eq("id", participantId);
         }
       }
+
+      posthog?.capture('form_submitted', { 
+        form_id: formId, 
+        form_title: form?.title, 
+        voting_type: form?.voting_type,
+        total_questions_answered: Object.keys(answers).length
+      });
 
       setStage("submitted");
     } catch {
@@ -313,12 +331,18 @@ export default function FillFormPage() {
           </p>
           
           <div className="flex flex-col gap-3 relative z-10">
-            <Link
-              href="/signup"
+            <button
+              onClick={() => {
+                posthog?.capture('viral_conversion_clicked', {
+                  source_form_id: formId,
+                  cta_location: 'fill_success'
+                });
+                setTimeout(() => router.push("/signup"), 400);
+              }}
               className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-primary"
             >
               Create your own form
-            </Link>
+            </button>
             <Link
               href={`/form/${formId}/results`}
               className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-ghost"
