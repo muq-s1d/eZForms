@@ -198,14 +198,14 @@ export default function FillFormPage() {
   // ===== PASSWORD GATE =====
   if (stage === "password") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background relative">
-        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium bg-secondary/80 hover:bg-secondary text-secondary-foreground px-4 py-2 rounded-full border border-border/50 shadow-sm transition-all z-10 hover:shadow-md hover:border-border">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 relative text-white">
+        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-[#1A1A1A] transition-all z-10 hover:border-[#333]">
           <ArrowLeft className="w-4 h-4" />
           Back to home
         </Link>
         <div className="w-full max-w-sm">
           <FadeInUp>
-            <div className="glass rounded-xl p-8 border border-border">
+            <div className="glass-panel rounded-2xl p-8 text-center">
               <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-6">
                 <Lock className="w-6 h-6 text-foreground" />
               </div>
@@ -221,15 +221,15 @@ export default function FillFormPage() {
                     placeholder="Enter password"
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    className="text-center bg-secondary/50 h-12"
+                    className="minimal-input w-full rounded-xl px-4 py-3 text-sm text-center h-12"
                     autoFocus
                   />
                   {passwordError && (
-                    <p className="text-sm text-destructive text-center">{passwordError}</p>
+                    <p className="text-sm text-[#EA4335] text-center">{passwordError}</p>
                   )}
-                  <Button type="submit" className="w-full h-12">
+                  <button type="submit" className="w-full h-12 rounded-xl text-sm font-semibold btn-obsidian-primary">
                     Unlock Form
-                  </Button>
+                  </button>
                 </div>
               </form>
             </div>
@@ -242,26 +242,48 @@ export default function FillFormPage() {
   // ===== SUBMITTED SUCCESS =====
   if (stage === "submitted") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-        <FadeInUp>
-          <div className="text-center max-w-sm">
-            <motion.div
-              className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto mb-6"
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 200 }}
+      <div className="min-h-screen flex items-center justify-center px-5 text-white">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="glass-panel rounded-2xl p-10 text-center max-w-md w-full mx-auto relative overflow-hidden"
+        >
+          {/* Ambient glow in the background of the card */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-white/[0.03] blur-3xl pointer-events-none" />
+          
+          <motion.div
+            className="w-16 h-16 rounded-2xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mx-auto mb-6 relative z-10"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+          >
+            <Check className="w-8 h-8 text-[#34A853]" />
+          </motion.div>
+          
+          <h1 className="text-2xl font-bold mb-3 tracking-tight" style={{ fontFamily: "var(--font-display, var(--font-sans))" }}>
+            Vote submitted
+          </h1>
+          <p className="text-sm text-[#A1A1A1] mb-8">
+            Your votes have been recorded anonymously. 
+            Now it's your turn to start a room.
+          </p>
+          
+          <div className="flex flex-col gap-3 relative z-10">
+            <Link
+              href="/signup"
+              className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-primary"
             >
-              <PartyPopper className="w-10 h-10 text-primary-foreground" />
-            </motion.div>
-            <h1 className="text-2xl font-bold mb-2">Vote submitted!</h1>
-            <p className="text-sm text-muted-foreground mb-6">
-              Your anonymous votes have been recorded.
-            </p>
-            <Button variant="outline" render={<Link href={`/form/${formId}/results`} />}>
-              View Results
-            </Button>
+              Create your own form
+            </Link>
+            <Link
+              href={`/form/${formId}/results`}
+              className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-ghost"
+            >
+              View live results
+            </Link>
           </div>
-        </FadeInUp>
+        </motion.div>
       </div>
     );
   }
@@ -269,27 +291,27 @@ export default function FillFormPage() {
   // ===== IDENTITY SELECTION =====
   if (stage === "identity") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
+      <div className="min-h-screen flex items-center justify-center px-4 py-12 text-white">
         <div className="w-full max-w-md">
           <FadeInUp>
             <div className="text-center mb-8">
-              <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-6 h-6 text-primary-foreground" />
+              <div className="w-12 h-12 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-5 h-5 text-[#A1A1A1]" />
               </div>
-              <h1 className="text-2xl font-bold mb-1">{form?.title}</h1>
+              <h1 className="text-2xl font-bold mb-2 tracking-tight" style={{ fontFamily: "var(--font-display, var(--font-sans))" }}>{form?.title}</h1>
               {form?.description && (
-                <p className="text-sm text-muted-foreground">{form.description}</p>
+                <p className="text-sm text-[#A1A1A1]">{form.description}</p>
               )}
             </div>
           </FadeInUp>
 
           <FadeInUp delay={0.1}>
-            <div className="glass rounded-xl p-6 border border-border">
+            <div className="glass-panel rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
-                <User className="w-4 h-4 text-foreground" />
+                <User className="w-4 h-4 text-white" />
                 <h2 className="font-semibold text-sm">Who are you?</h2>
               </div>
-              <p className="text-xs text-muted-foreground mb-4">
+              <p className="text-xs text-[#A1A1A1] mb-5">
                 Pick your name below. You won&apos;t be able to vote for yourself.
               </p>
 
@@ -303,10 +325,10 @@ export default function FillFormPage() {
                     disabled={p.has_voted}
                     className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 text-left border ${
                       p.has_voted
-                        ? "bg-secondary/40 text-muted-foreground border-border/40 cursor-not-allowed opacity-60"
+                        ? "bg-[#0A0A0A] text-[#444748] border-[#1A1A1A] cursor-not-allowed opacity-60"
                         : identity === p.name
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-secondary text-secondary-foreground border-border hover:border-primary/30"
+                        ? "bg-white text-black border-white"
+                        : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -323,16 +345,16 @@ export default function FillFormPage() {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-6"
                 >
-                  <Button
+                  <button
                     onClick={() => {
                       setStage("voting");
                       setCurrentQ(0);
                     }}
-                    className="w-full h-11"
+                    className="w-full h-11 rounded-xl text-sm font-semibold btn-obsidian-primary flex items-center justify-center"
                   >
                     Start voting
                     <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
+                  </button>
                 </motion.div>
               )}
             </div>
@@ -349,21 +371,21 @@ export default function FillFormPage() {
   const allAnswered = questions.every((q) => answers[q.id]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 text-white">
       <div className="w-full max-w-md">
         {/* Progress bar */}
         <div className="mb-6">
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+          <div className="flex items-center justify-between text-xs text-[#A1A1A1] mb-3">
             <span>
               Question {currentQ + 1} of {questions.length}
             </span>
-            <Badge variant="secondary" className="text-[10px]">
+            <span className="px-2 py-1 rounded-md bg-[#1A1A1A] text-[10px] text-white">
               Voting as {identity}
-            </Badge>
+            </span>
           </div>
-          <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+          <div className="h-1.5 rounded-full bg-[#1A1A1A] overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-primary"
+              className="h-full rounded-full bg-white"
               animate={{ width: `${((currentQ + 1) / questions.length) * 100}%` }}
               transition={{ duration: 0.3 }}
             />
@@ -378,7 +400,7 @@ export default function FillFormPage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
-            className="glass rounded-xl p-6 border border-border"
+            className="glass-panel rounded-2xl p-8"
           >
             <h2 className="text-lg font-bold mb-6">{currentQuestion?.question_text}</h2>
 
@@ -392,10 +414,10 @@ export default function FillFormPage() {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={() => currentQuestion && selectAnswer(currentQuestion.id, p.id)}
-                    className={`w-full p-4 rounded-lg text-left text-sm font-medium transition-all duration-200 flex items-center justify-between border ${
+                    className={`w-full p-4 rounded-xl text-left text-sm font-medium transition-all duration-200 flex items-center justify-between border ${
                       isSelected
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-secondary text-secondary-foreground border-border hover:border-primary/30"
+                        ? "bg-white text-black border-white"
+                        : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
                     }`}
                   >
                     <span>{p.name}</span>
@@ -413,21 +435,24 @@ export default function FillFormPage() {
 
         {/* Navigation */}
         <div className="flex items-center justify-between mt-6">
-          <Button
-            variant="ghost"
+          <button
             onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
             disabled={currentQ === 0}
-            className="text-muted-foreground"
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              currentQ === 0 ? "text-[#444748] cursor-not-allowed" : "text-[#A1A1A1] hover:text-white"
+            }`}
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4" />
             Back
-          </Button>
+          </button>
 
           {isLastQuestion ? (
-            <Button
+            <button
               onClick={handleSubmit}
               disabled={!allAnswered || submitting}
-              className="px-8"
+              className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                !allAnswered || submitting ? "bg-[#1A1A1A] text-[#444748] cursor-not-allowed" : "btn-obsidian-primary"
+              }`}
             >
               {submitting ? (
                 <motion.div
@@ -439,15 +464,18 @@ export default function FillFormPage() {
                   <Check className="w-4 h-4 ml-2" />
                 </>
               )}
-            </Button>
+              </button>
           ) : (
-            <Button
+            <button
               onClick={() => setCurrentQ(currentQ + 1)}
               disabled={!selectedAnswer}
+              className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                !selectedAnswer ? "bg-[#1A1A1A] text-[#444748] cursor-not-allowed" : "btn-obsidian-ghost"
+              }`}
             >
               Next
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+              <ArrowRight className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>

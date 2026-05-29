@@ -128,7 +128,7 @@
      uses no mix-blend-screen — no compositor crash risk. */
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid #1A1A1A;
+  border: 1px solid #262626;
   /* Inner top-edge light simulation */
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
   /* Prevent paint bleeding from animated background layers */
