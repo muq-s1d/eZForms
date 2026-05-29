@@ -74,10 +74,10 @@ export function DonutChart({ data, total }: DonutChartProps) {
   const viewBox = "22 22 216 216";
 
   return (
-    <div className="flex flex-col items-center w-full">
-      <div className="flex items-center justify-center gap-6 w-full">
+    <div className="flex flex-col items-center w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 w-full">
         {/* SVG Donut */}
-        <svg viewBox={viewBox} className="w-[280px] shrink-0" style={{ overflow: "visible" }}>
+        <svg viewBox={viewBox} className="w-[240px] sm:w-[280px] shrink-0" style={{ overflow: "visible" }}>
           {slices.map((slice) => {
             const isWinner = slice.value === maxValue;
             const isHovered = hovered === slice.index;

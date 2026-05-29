@@ -54,6 +54,7 @@ export default function CreateFormPage() {
   const [votingType, setVotingType] = useState<"roster" | "general">("roster");
   const [timerDuration, setTimerDuration] = useState<number | null>(null);
   const [isTimerScrolledToEnd, setIsTimerScrolledToEnd] = useState(false);
+  const [isPublicFeed, setIsPublicFeed] = useState(true);
 
   const [participantInput, setParticipantInput] = useState("");
   const [participants, setParticipants] = useState<string[]>([]);
@@ -74,7 +75,7 @@ export default function CreateFormPage() {
 
   const canProceed = () => {
     switch (currentStep) {
-      case "details":      return title.trim().length > 0;
+      case "details":      return title.trim().length > 0 && (votingType === "roster" ? password.trim().length > 0 : true);
       case "participants": return participants.length >= 2;
       case "questions":    return questions.length >= 1;
       case "review":       return true;
@@ -123,10 +124,11 @@ export default function CreateFormPage() {
           creator_id: authUser.id,
           title,
           description: description || null,
-          password: password.trim() || null,
           is_active: true,
           is_public_results: isPublicResults,
           voting_type: votingType,
+          is_public_feed: votingType === "roster" ? isPublicFeed : false,
+          password: password.trim() || null,
           expires_at: timerDuration 
             ? new Date(Date.now() + timerDuration * 60 * 60 * 1000).toISOString() 
             : null,
@@ -309,6 +311,39 @@ export default function CreateFormPage() {
               {/* ── DETAILS ── */}
               {currentStep === "details" && (
                 <div className="space-y-6">
+                  <div className="mb-6 space-y-3 pb-4 border-b border-[#1A1A1A]">
+                    <label className="text-sm font-medium text-white block mb-1">Start from a Template</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      <button
+                        onClick={() => {
+                          setTitle("");
+                          setQuestions([]);
+                        }}
+                        className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${!title ? "bg-white text-black border-white" : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:text-white hover:border-[#333]"}`}
+                      >
+                        Start from scratch
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTitle("Most Likely To...");
+                          setQuestions([]); // Placeholder until questions are provided
+                        }}
+                        className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${title === "Most Likely To..." ? "bg-white text-black border-white" : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:text-white hover:border-[#333]"}`}
+                      >
+                        Most Likely To
+                      </button>
+                      <button
+                        onClick={() => {
+                          setTitle("Gaming Squad");
+                          setQuestions([]); // Placeholder until questions are provided
+                        }}
+                        className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${title === "Gaming Squad" ? "bg-white text-black border-white" : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:text-white hover:border-[#333]"}`}
+                      >
+                        Gaming Squad
+                      </button>
+                    </div>
+                  </div>
+
                   <div>
                     <h2 className="text-2xl font-extrabold tracking-tight mb-1" style={displayFont}>
                       Create your form
@@ -349,6 +384,42 @@ export default function CreateFormPage() {
                           Anyone with the link votes anonymously.
                         </p>
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Dynamic Settings based on Mode */}
+                  {votingType === "roster" && (
+                    <div className="flex items-center justify-between pb-2">
+                      <div>
+                        <label className="text-sm font-medium text-white block mb-0.5">List on Public Feed</label>
+                        <p className="text-xs text-[#A1A1A1]">Allow anyone on the homepage to discover this form.</p>
+                      </div>
+                      <button
+                        onClick={() => setIsPublicFeed(!isPublicFeed)}
+                        className={`w-11 h-6 rounded-full transition-colors relative ${isPublicFeed ? "bg-[#34A853]" : "bg-[#1A1A1A]"}`}
+                      >
+                        <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${isPublicFeed ? "left-6" : "left-1"}`} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 pb-2">
+                    <div>
+                      <label className="text-sm font-medium text-white block mb-1">
+                        {votingType === "roster" ? "Form Password" : "Password Protect (Optional)"}
+                      </label>
+                      <p className="text-xs text-[#A1A1A1] mb-2">
+                        {votingType === "roster" 
+                          ? "Required to access this squad form." 
+                          : "Require a password to vote on this open form."}
+                      </p>
+                      <input
+                        type="text"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="e.g. secret123"
+                        className="w-full bg-[#0A0A0A] border border-[#1A1A1A] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#333] transition-colors"
+                      />
                     </div>
                   </div>
 
@@ -424,16 +495,7 @@ export default function CreateFormPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-white">Form Password</label>
-                    <input
-                      type="password"
-                      className="minimal-input w-full rounded-xl px-4 py-3 text-sm"
-                      placeholder="Required to access the form"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
+
 
                   {/* Privacy toggle */}
                   <button

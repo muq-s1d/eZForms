@@ -18,6 +18,7 @@ export interface Form {
   is_active: boolean;
   is_public_results: boolean;
   voting_type?: "roster" | "general";
+  is_public_feed?: boolean;
   expires_at?: string | null;
   created_at: string;
 }

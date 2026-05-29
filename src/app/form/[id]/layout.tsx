@@ -23,17 +23,20 @@ export async function generateMetadata({
   const title = `${form.title} | eZForms`;
   const description = form.description || "Vote now — results update live. Join the room on eZForms.";
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ezforms-gamma.vercel.app";
+  const url = `${siteUrl}/form/${resolvedParams.id}/fill`;
+
   return {
     title,
     description,
     openGraph: {
       title,
       description,
-      url: `https://ezforms.app/form/${resolvedParams.id}/fill`,
+      url,
       siteName: "eZForms",
       images: [
         {
-          url: "/og-image.jpg",
+          url: `${siteUrl}/og-image.jpg`,
           width: 1200,
           height: 630,
           alt: form.title,

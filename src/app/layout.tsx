@@ -17,8 +17,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://ezforms-gamma.vercel.app";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ezforms.app"),
+  metadataBase: new URL(siteUrl),
   title: {
     default: "eZForms — Settle the debate.",
     template: "%s | eZForms",
@@ -29,11 +31,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "eZForms — Settle the debate.",
     description: "Create and share beautiful, interactive voting rooms in seconds. Who's most likely to? Find out now.",
-    url: "https://ezforms.app",
+    url: siteUrl,
     siteName: "eZForms",
     images: [
       {
-        url: "/og-image.jpg",
+        url: `${siteUrl}/og-image.jpg`,
         width: 1200,
         height: 630,
         alt: "eZForms Cover Image",
