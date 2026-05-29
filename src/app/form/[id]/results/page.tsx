@@ -77,7 +77,7 @@ export default function ResultsPage() {
     if (!isCreator) {
       if (!formData.is_public_results) { setStage("private"); return; }
       if (formData.password) {
-        const storedAuth = sessionStorage.getItem(`ezforms-auth-${formId}`);
+        const storedAuth = localStorage.getItem(`ezforms-auth-${formId}`);
         if (storedAuth !== "true") { setStage("password"); return; }
       }
     }
@@ -136,7 +136,7 @@ export default function ResultsPage() {
     e.preventDefault();
     setPasswordError("");
     if (passwordInput === form?.password) {
-      sessionStorage.setItem(`ezforms-auth-${formId}`, "true");
+      localStorage.setItem(`ezforms-auth-${formId}`, "true");
       fetchResults();
     } else {
       setPasswordError("Incorrect password");

@@ -61,6 +61,8 @@ export default function FillFormPage() {
       return;
     }
 
+    setForm(formRes.data);
+
     if (!formRes.data.is_active) {
       setError("This form is no longer accepting responses.");
       setStage("error");
@@ -73,7 +75,6 @@ export default function FillFormPage() {
       return;
     }
 
-    setForm(formRes.data);
     setParticipants(partRes.data || []);
     setQuestions(qRes.data || []);
 
@@ -97,7 +98,7 @@ export default function FillFormPage() {
 
     // Check if password protected
     if (formRes.data.password && formRes.data.password.trim() !== "") {
-      const storedAuth = sessionStorage.getItem(`ezforms-auth-${formId}`);
+      const storedAuth = localStorage.getItem(`ezforms-auth-${formId}`);
       if (storedAuth === "true") {
         routeToNextStage();
       } else {
@@ -116,7 +117,7 @@ export default function FillFormPage() {
     e.preventDefault();
     setPasswordError("");
     if (passwordInput === form?.password) {
-      sessionStorage.setItem(`ezforms-auth-${formId}`, "true");
+      localStorage.setItem(`ezforms-auth-${formId}`, "true");
       if (form?.voting_type === "general") {
         setIdentity("Anonymous Voter");
         setStage("voting");
@@ -213,15 +214,22 @@ export default function FillFormPage() {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <FadeInUp>
-          <div className="text-center max-w-sm">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-destructive" />
+          <div className="text-center max-w-sm glass-panel p-8 rounded-2xl w-full">
+            <div className="w-16 h-16 rounded-full bg-[#EA4335]/10 flex items-center justify-center mx-auto mb-4 border border-[#EA4335]/20">
+              <AlertCircle className="w-8 h-8 text-[#EA4335]" />
             </div>
             <h1 className="text-xl font-bold mb-2">Oops</h1>
-            <p className="text-sm text-muted-foreground">{error}</p>
-            <Button variant="outline" className="mt-6" render={<Link href="/" />}>
-              Go home
-            </Button>
+            <p className="text-sm text-[#A1A1A1]">{error}</p>
+            <div className="flex flex-col gap-3 mt-8 w-full">
+              <Link href="/home" className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-primary inline-flex justify-center items-center">
+                Back to live feed
+              </Link>
+              {form?.is_public_results && (
+                <Link href={`/form/${formId}/results`} className="w-full py-3.5 rounded-xl text-sm font-semibold btn-obsidian-ghost inline-flex justify-center items-center">
+                  View live results
+                </Link>
+              )}
+            </div>
           </div>
         </FadeInUp>
       </div>
