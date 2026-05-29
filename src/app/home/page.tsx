@@ -35,26 +35,41 @@ export default function HomePage() {
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto relative">
-          <div className="mb-6">
-            <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium btn-obsidian-ghost px-4 py-2 rounded-full shadow-sm transition-all">
+          
+          {/* Desktop Back Button */}
+          <div className="mb-6 hidden md:block">
+            <Link href="/" className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border-[#262626] text-sm font-medium text-[#A1A1A1] hover:text-white hover:border-[#444] transition-all group shadow-sm">
+               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+               Back to home
+            </Link>
+          </div>
+          
+          <div className="text-center mb-12 flex flex-col items-center">
+            {/* Mobile Back Button */}
+            <Link href="/" className="md:hidden inline-flex items-center gap-2 text-sm text-[#A1A1A1] hover:text-white transition-colors mb-6">
               <ArrowLeft className="w-4 h-4" />
               Back to home
             </Link>
-          </div>
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold tracking-tight">Live Forms Feed</h1>
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5 px-3 py-1 bg-secondary rounded-full">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-              </span>
-              Realtime
-            </span>
-          </div>
 
-          <p className="text-muted-foreground mb-8">
-            Explore active forms happening right now. Click on any form to enter the password and cast your votes.
-          </p>
+            {/* Realtime Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#0A0A0A] border border-[#262626] rounded-full mb-6 shadow-xl">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34A853] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#34A853]"></span>
+              </span>
+              <span className="text-[10px] font-bold text-[#A1A1A1] uppercase tracking-widest">Realtime Feed</span>
+            </div>
+            
+            {/* Heading */}
+            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4" style={{ fontFamily: "var(--font-display, var(--font-sans))" }}>
+              Live Forms
+            </h1>
+            
+            {/* Description */}
+            <p className="text-[#A1A1A1] text-lg max-w-lg">
+              Explore active forms happening right now. Click on any form to enter the password and cast your votes.
+            </p>
+          </div>
 
           {loading ? (
             <div className="flex justify-center py-12">

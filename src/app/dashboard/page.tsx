@@ -206,7 +206,7 @@ export default function DashboardPage() {
                   hidden: { opacity: 0, y: 18 },
                   visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
                 }}
-                className="group glass-panel rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden hover:border-[#333] transition-colors duration-300"
+                className="group glass-panel rounded-xl p-5 flex flex-col gap-4 relative overflow-hidden hover:border-[#444] transition-colors duration-300"
               >
                 {/* Ambient bloom */}
                 <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-white/0 group-hover:bg-white/[0.03] blur-2xl transition-colors duration-500 pointer-events-none" />
@@ -322,9 +322,9 @@ export default function DashboardPage() {
             >
               <Link
                 href="/form/create"
-                className="group flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[#1A1A1A] hover:border-[#333] bg-transparent transition-all duration-300 min-h-[200px] p-6 w-full"
+                className="group flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[#333] hover:border-[#555] bg-[#0A0A0A]/50 transition-all duration-300 min-h-[200px] p-6 w-full"
               >
-                <div className="w-10 h-10 rounded-full border border-[#1A1A1A] group-hover:border-[#333] bg-[#0A0A0A] flex items-center justify-center text-[#A1A1A1] group-hover:text-white transition-colors duration-200">
+                <div className="w-10 h-10 rounded-full border border-[#333] group-hover:border-[#555] bg-[#0A0A0A] flex items-center justify-center text-[#A1A1A1] group-hover:text-white transition-colors duration-200">
                   <Plus className="w-5 h-5" />
                 </div>
                 <span className="text-sm text-[#A1A1A1] group-hover:text-white transition-colors duration-200">

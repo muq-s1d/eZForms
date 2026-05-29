@@ -18,13 +18,36 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ezforms.app"),
   title: {
-    default: "eZForms — Fun Friend Group Voting",
+    default: "eZForms — Settle the debate.",
     template: "%s | eZForms",
   },
   description:
-    "Create anonymous voting forms for your friend group. Who's most likely to...? Find out with eZForms!",
-  keywords: ["voting", "friends", "polls", "anonymous", "fun", "social"],
+    "Create and share beautiful, interactive voting rooms in seconds. Who's most likely to? Find out now.",
+  keywords: ["voting", "friends", "polls", "anonymous", "fun", "social", "live"],
+  openGraph: {
+    title: "eZForms — Settle the debate.",
+    description: "Create and share beautiful, interactive voting rooms in seconds. Who's most likely to? Find out now.",
+    url: "https://ezforms.app",
+    siteName: "eZForms",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "eZForms Cover Image",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "eZForms — Settle the debate.",
+    description: "Create and share beautiful, interactive voting rooms in seconds. Who's most likely to? Find out now.",
+    images: ["/og-image.jpg"],
+  },
 };
 
 export default function RootLayout({
