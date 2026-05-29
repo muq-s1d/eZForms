@@ -22,6 +22,8 @@ export function FadeInUp({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration, delay, ease: "easeOut" }}
       className={className}
+      // Pre-promote to GPU layer before animation starts
+      style={{ willChange: "opacity, transform" }}
       {...props}
     >
       {children}
@@ -47,6 +49,7 @@ export function FadeIn({
       animate={{ opacity: 1 }}
       transition={{ duration, delay, ease: "easeOut" }}
       className={className}
+      style={{ willChange: "opacity" }}
     >
       {children}
     </motion.div>
@@ -71,6 +74,7 @@ export function ScaleIn({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration, delay, ease: [0.16, 1, 0.3, 1] }}
       className={className}
+      style={{ willChange: "opacity, transform" }}
     >
       {children}
     </motion.div>
@@ -83,7 +87,7 @@ export const staggerContainer: Variants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.07,
       delayChildren: 0.1,
     },
   },
@@ -148,6 +152,7 @@ export function AnimateInView({
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.6, delay, ease: "easeOut" }}
       className={className}
+      style={{ willChange: "opacity, transform" }}
     >
       {children}
     </motion.div>

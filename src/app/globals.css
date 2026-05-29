@@ -123,12 +123,16 @@
 
 /* ===== Glass Panel — Obsidian Precision Style ===== */
 .glass-panel {
-  background: rgba(10, 10, 10, 0.85);
+  background: rgba(10, 10, 10, 0.88);
+  /* backdrop-filter is safe here because the new ambient background
+     uses no mix-blend-screen — no compositor crash risk. */
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid #1A1A1A;
   /* Inner top-edge light simulation */
   box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+  /* Prevent paint bleeding from animated background layers */
+  isolation: isolate;
 }
 
 .glass-glow::before {
@@ -148,10 +152,11 @@
   position: fixed;
   top: 24px;
   left: 50%;
-  transform: translateX(-50%);
+  /* Base visible state — translateX centres the pill */
+  transform: translateX(-50%) translateY(0);
   width: 95%;
   max-width: 1280px;
-  background: rgba(10, 10, 10, 0.85);
+  background: rgba(10, 10, 10, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid #1A1A1A;
@@ -160,6 +165,16 @@
     inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
     0 24px 48px rgba(0, 0, 0, 0.6);
   z-index: 50;
+  /* GPU-safe transition — only animates transform, never layout */
+  transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Hide state: slides navbar above the viewport */
+.navbar-hidden {
+  transform: translateX(-50%) translateY(calc(-100% - 32px));
 }
 
 /* ===== Minimal Input Style ===== */
@@ -258,6 +273,127 @@
 /* ===== SVG Chart Animation ===== */
 @keyframes dash-draw {
   to { stroke-dashoffset: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AMBIENT BLOB BACKGROUND SYSTEM
+   GPU-safe architecture: translate3d() only, no mix-blend-screen
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Container: fixed full-screen, behind everything */
+.ambient-container {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: #050505;
+  /* Contain paint to this layer — prevents repaints leaking upward */
+  contain: paint;
+  /* Isolate from any blend-mode contamination */
+  isolation: isolate;
+}
+
+/* Base blob: a blurred radial gradient circle */
+.ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  /* Blur at element scale — far cheaper than blur on a 200vw container */
+  filter: blur(80px);
+  /* Each blob gets its own GPU compositing layer — predictable, stable */
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Subtler opacity vs. the old mix-blend-screen system */
+  opacity: 0.22;
+}
+
+/* ── Blob 1: Deep Purple — top-left quadrant ── */
+.ambient-blob-1 {
+  width: 650px;
+  height: 650px;
+  top: -15%;
+  left: -10%;
+  /* Richer purple since we have no mix-blend-screen amplification */
+  background: radial-gradient(ellipse at center, #7B2FBE 0%, #4A1080 40%, transparent 70%);
+  animation: blob-drift-1 28s ease-in-out infinite;
+}
+
+/* ── Blob 2: Blue — bottom-right quadrant ── */
+.ambient-blob-2 {
+  width: 550px;
+  height: 550px;
+  bottom: -10%;
+  right: -8%;
+  background: radial-gradient(ellipse at center, #2563EB 0%, #1A3A8F 40%, transparent 70%);
+  animation: blob-drift-2 34s ease-in-out infinite;
+}
+
+/* ── Blob 3: Cyan accent — upper-center ── */
+.ambient-blob-3 {
+  width: 420px;
+  height: 420px;
+  top: 20%;
+  left: 45%;
+  background: radial-gradient(ellipse at center, #0891B2 0%, #0E5F7A 40%, transparent 70%);
+  opacity: 0.14;
+  animation: blob-drift-3 42s ease-in-out infinite;
+}
+
+/* Keyframes animate ONLY translate3d — compositor-promoted, GPU-only */
+@keyframes blob-drift-1 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  25%  { transform: translate3d(60px, 40px, 0) scale(1.04); }
+  50%  { transform: translate3d(30px, -30px, 0) scale(0.97); }
+  75%  { transform: translate3d(-40px, 50px, 0) scale(1.02); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes blob-drift-2 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  30%  { transform: translate3d(-50px, -35px, 0) scale(1.05); }
+  60%  { transform: translate3d(-20px, 40px, 0) scale(0.96); }
+  80%  { transform: translate3d(35px, -20px, 0) scale(1.03); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes blob-drift-3 {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  33%  { transform: translate3d(-30px, -40px, 0) scale(1.06); }
+  66%  { transform: translate3d(40px, 30px, 0) scale(0.95); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* ── Mobile Adaptive: fewer layers, lower intensity ── */
+@media (max-width: 768px) {
+  .ambient-blob {
+    /* Reduce opacity — save battery */
+    opacity: 0.13;
+    /* Slow down animations — fewer GPU ticks per second */
+    animation-duration: 55s;
+  }
+  /* Drop the 3rd blob entirely on mobile */
+  .ambient-blob-3 {
+    display: none;
+  }
+  /* Shrink remaining blobs so blur covers less area */
+  .ambient-blob-1 {
+    width: 420px;
+    height: 420px;
+    filter: blur(60px);
+  }
+  .ambient-blob-2 {
+    width: 360px;
+    height: 360px;
+    filter: blur(60px);
+  }
+}
+
+/* ── Respect reduced-motion system preference ── */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob {
+    animation: none !important;
+  }
 }
 
 /* ===== Scrollbar ===== */

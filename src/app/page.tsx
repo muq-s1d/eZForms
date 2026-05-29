@@ -98,7 +98,7 @@ export default function LandingPage() {
         >
           <Link
             href="/home"
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#1A1A1A] bg-[#0A0A0A]/70 backdrop-blur-sm hover:border-[#333] transition-colors duration-300"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#1A1A1A] bg-[#0A0A0A]/90 hover:border-[#333] transition-colors duration-300"
           >
             <span className="w-2 h-2 rounded-full bg-[#34A853] pulse-live inline-block" />
             <span className="text-xs font-medium text-[#A1A1A1] tracking-wide">
