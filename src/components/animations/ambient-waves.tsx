@@ -24,14 +24,17 @@ export function AmbientWaves() {
       aria-hidden="true"
       className="ambient-container"
     >
-      {/* Blob 1 — Purple, top-left anchor */}
+      {/* Blob 1 — Large Purple sweep, top-left into center */}
       <div className="ambient-blob ambient-blob-1" />
 
-      {/* Blob 2 — Blue, bottom-right anchor */}
+      {/* Blob 2 — Blue/Indigo, bottom-right anchor */}
       <div className="ambient-blob ambient-blob-2" />
 
-      {/* Blob 3 — Cyan accent, center-top anchor (hidden on mobile) */}
+      {/* Blob 3 — Violet accent, top-right (hidden on mobile) */}
       <div className="ambient-blob ambient-blob-3" />
+
+      {/* Blob 4 — Deep indigo center anchor, prevents pure-black midfield (hidden on mobile) */}
+      <div className="ambient-blob ambient-blob-4" />
     </div>
   );
 }
