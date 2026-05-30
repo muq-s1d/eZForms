@@ -499,7 +499,7 @@ export default function ResultsPage() {
                   source_form_id: form?.id,
                   cta_location: 'results_bottom'
                 });
-                setTimeout(() => router.push("/"), 400);
+                setTimeout(() => router.push("/signup"), 400);
               }}
               className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl btn-obsidian-primary text-sm font-semibold shadow-2xl shadow-[#34A853]/10 border border-[#34A853]/20 hover:border-[#34A853]/40 transition-colors"
             >
