@@ -11,12 +11,14 @@ import type { Form } from "@/lib/types/database";
 import { CountdownBadge } from "@/components/ui/countdown-badge";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Highlight } from "@/components/ui/highlight";
+import { SuggestTemplateModal } from "@/components/templates/suggest-template-modal";
 
 export default function HomePage() {
   const [liveForms, setLiveForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "roster" | "general">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
   const debouncedSearch = useDebounce(searchQuery, 400);
 
   const filteredForms = filter === "all" 
@@ -86,6 +88,28 @@ export default function HomePage() {
             <p className="text-[#A1A1A1] text-lg max-w-lg mb-8">
               Explore active forms happening right now. Click on any form to enter the password and cast your votes.
             </p>
+
+            {/* Template Banner CTA */}
+            <div className="glass-panel p-5 rounded-2xl border-dashed mb-12 w-full max-w-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-left">
+              <div>
+                <h3 className="font-bold text-white mb-1">Inspired? Launch your own in seconds.</h3>
+                <p className="text-xs text-[#A1A1A1]">Skip the setup and use a viral template.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                <Link
+                  href="/signup?next=/form/create"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold bg-white text-black hover:bg-gray-200 transition-colors whitespace-nowrap text-center"
+                >
+                  Browse templates
+                </Link>
+                <button
+                  onClick={() => setIsSuggestModalOpen(true)}
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-semibold border border-[#1A1A1A] hover:border-[#333] hover:bg-white/5 transition-all text-white flex items-center justify-center"
+                >
+                  Suggest a template
+                </button>
+              </div>
+            </div>
 
             {/* Feed Filters & Search */}
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center mx-auto w-full max-w-2xl">
@@ -181,6 +205,7 @@ export default function HomePage() {
       </main>
 
       <Footer />
+      <SuggestTemplateModal isOpen={isSuggestModalOpen} onClose={() => setIsSuggestModalOpen(false)} />
     </div>
   );
 }

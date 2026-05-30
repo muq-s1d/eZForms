@@ -7,6 +7,7 @@ import { motion, useInView } from "framer-motion";
 import { ArrowRight, Users, Lock, BarChart3, Zap } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { TEMPLATES } from "@/lib/templates";
 
 /* ─── Helpers ─── */
 function useMagnet(ref: React.RefObject<HTMLElement | null>, strength = 0.12) {
@@ -153,12 +154,47 @@ export default function LandingPage() {
           </button>
         </motion.div>
 
+        {/* ══════════ TEMPLATE CAROUSEL ══════════ */}
+        <section className="relative w-full pt-16 pb-8 overflow-hidden z-20">
+          <h2 className="text-sm uppercase tracking-widest text-[#A1A1A1] text-center font-bold mb-8">
+            Or start with a template in seconds
+          </h2>
+          <div className="flex overflow-x-auto pb-8 hide-scrollbar px-5 md:px-0 md:max-w-6xl md:mx-auto gap-4 snap-x snap-mandatory">
+            {TEMPLATES.map((t, i) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 + i * 0.1 }}
+                className="snap-start shrink-0 w-[280px] md:w-[320px] glass-panel rounded-2xl p-6 flex flex-col h-full hover:border-[#444] transition-colors group relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.02] blur-xl rounded-full pointer-events-none transition-colors group-hover:bg-white/[0.05]" />
+                <h3 className="text-lg font-bold text-white mb-2">{t.title}</h3>
+                <p className="text-sm text-[#A1A1A1] mb-6 flex-1 line-clamp-3">{t.description}</p>
+                
+                <div className="flex items-center justify-between mt-auto">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#444748]">
+                    {t.voting_type === "roster" ? "Squad Vote" : "Open Vote"}
+                  </span>
+                  <Link
+                    href={`/signup?next=/form/create?template=${t.id}`}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-white group/btn bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Use Template
+                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
         {/* Faux Product Mockup - Apple/Nothing style floating glass UI */}
         <motion.div
           initial={{ opacity: 0, y: 60, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 1.4, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-20 relative w-full max-w-4xl mx-auto perspective-[2000px] pointer-events-none"
+          className="mt-10 relative w-full max-w-4xl mx-auto perspective-[2000px] pointer-events-none"
         >
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent z-10 top-1/2" />
           

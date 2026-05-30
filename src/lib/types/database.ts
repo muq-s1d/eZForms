@@ -52,6 +52,15 @@ export interface Answer {
   selected_participant_id: string;
 }
 
+export interface TemplateSuggestion {
+  id: string;
+  title: string;
+  description: string | null;
+  questions: string[]; // JSON array of strings
+  suggester_id: string | null;
+  created_at: string;
+}
+
 // ===== Extended Types with Relations =====
 
 export interface FormWithDetails extends Form {

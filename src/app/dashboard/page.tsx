@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { Form } from "@/lib/types/database";
 import { CountdownBadge } from "@/components/ui/countdown-badge";
+import { TEMPLATES } from "@/lib/templates";
 
 interface FormWithCounts extends Form {
   participant_count: number;
@@ -173,22 +174,45 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col items-center justify-center py-24 glass-panel rounded-2xl border-dashed"
+            className="flex flex-col items-center justify-center py-16"
           >
-            <div className="w-14 h-14 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mb-5">
+            <div className="w-14 h-14 rounded-xl border border-[#1A1A1A] bg-[#050505] flex items-center justify-center mb-5 shadow-2xl">
               <Sparkles className="w-6 h-6 text-[#A1A1A1]" />
             </div>
-            <h2 className="text-lg font-semibold text-white mb-2">No forms yet</h2>
-            <p className="text-sm text-[#A1A1A1] mb-7 text-center max-w-xs">
-              Create your first voting form and share it with your crew.
+            <h2 className="text-xl font-bold text-white mb-2" style={displayFont}>No forms yet</h2>
+            <p className="text-sm text-[#A1A1A1] mb-8 text-center max-w-sm">
+              Start from scratch, or pick one of our viral templates to launch your first voting room instantly.
             </p>
-            <Link
-              href="/form/create"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold btn-obsidian-primary"
-            >
-              <Plus className="w-4 h-4" />
-              Create your first form
-            </Link>
+            
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+              {/* Start from scratch */}
+              <Link
+                href="/form/create"
+                className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:border-[#444] hover:bg-white/5 transition-all group min-h-[200px]"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#1A1A1A] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Plus className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-bold text-white mb-1">Start from scratch</h3>
+                <p className="text-xs text-[#A1A1A1]">Build a custom form</p>
+              </Link>
+              
+              {/* Templates */}
+              {TEMPLATES.slice(0, 3).map((t, i) => (
+                <Link
+                  key={t.id}
+                  href={`/form/create?template=${t.id}`}
+                  className="glass-panel rounded-2xl p-6 flex flex-col hover:border-[#444] hover:bg-white/5 transition-all group min-h-[200px] text-left relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.02] blur-xl rounded-full pointer-events-none transition-colors group-hover:bg-white/[0.05]" />
+                  <div className="w-8 h-8 rounded-lg bg-[#0A0A0A] border border-[#1A1A1A] flex items-center justify-center mb-4">
+                    <Sparkles className="w-4 h-4 text-[#A1A1A1] group-hover:text-white transition-colors" />
+                  </div>
+                  <h3 className="font-bold text-white mb-2 leading-tight">{t.title}</h3>
+                  <p className="text-xs text-[#A1A1A1] line-clamp-3">{t.description}</p>
+                </Link>
+              ))}
+            </div>
           </motion.div>
         ) : (
           <motion.div

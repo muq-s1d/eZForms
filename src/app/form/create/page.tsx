@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/layout/navbar";
 import { createClient } from "@/lib/supabase/client";
@@ -23,9 +23,11 @@ import {
   Clock,
   Unlock,
   ChevronRight,
+  Search,
 } from "lucide-react";
 import type { FormStep } from "@/lib/types/database";
 import { usePostHog } from 'posthog-js/react';
+import { TEMPLATES } from "@/lib/templates";
 
 const displayFont = { fontFamily: "var(--font-display, var(--font-sans))" };
 
@@ -38,8 +40,9 @@ const steps: { key: FormStep; label: string; icon: React.ElementType }[] = [
 
 const ACCENT_COLORS = ["#4285F4", "#EA4335", "#FBBC05", "#34A853", "#9C27B0", "#FF9800"];
 
-export default function CreateFormPage() {
+function CreateFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const posthog = usePostHog();
   const [currentStep, setCurrentStep] = useState<FormStep>("details");
   const [loading, setLoading] = useState(false);
@@ -49,6 +52,7 @@ export default function CreateFormPage() {
   const [user, setUser] = useState<{ email: string } | null>(null);
 
   // Form state
+  const [templateSearchQuery, setTemplateSearchQuery] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [password, setPassword] = useState("");
@@ -70,7 +74,19 @@ export default function CreateFormPage() {
       if (currentUser) setUser({ email: currentUser.email || "" });
     }
     getUser();
-  }, []);
+
+    // Template initialization
+    const templateId = searchParams.get("template");
+    if (templateId) {
+      const template = TEMPLATES.find(t => t.id === templateId);
+      if (template) {
+        setTitle(template.title);
+        setDescription(template.description);
+        setVotingType(template.voting_type);
+        setQuestions([...template.questions]);
+      }
+    }
+  }, [searchParams]);
 
   const currentStepIndex = steps.findIndex((s) => s.key === currentStep);
   const progressPct = (currentStepIndex / (steps.length - 1)) * 100;
@@ -237,17 +253,17 @@ export default function CreateFormPage() {
     );
   }
 
+  const selectedTemplate = TEMPLATES.find((t) => t.title === title);
+  const filteredTemplates = TEMPLATES.filter(t => t.title.toLowerCase().includes(templateSearchQuery.toLowerCase()));
+
   /* ── Main form ── */
   return (
     <div className="min-h-screen flex flex-col text-white overflow-hidden relative">
       <Navbar user={user} />
 
       <main className="flex-1 pt-[100px] pb-16 px-5">
-        <div className="max-w-xl mx-auto">
-
-          {/* ── Progress Stepper ── */}
-          <div className="mb-10 relative">
-            {/* Connecting line track */}
+        <motion.div layout className="max-w-xl mx-auto w-full mb-10 relative">
+          {/* Connecting line track */}
             <div className="absolute top-[22px] left-[10%] right-[10%] h-[2px] bg-[#1A1A1A] rounded-full z-0" />
             {/* Animated fill */}
             <motion.div
@@ -305,8 +321,10 @@ export default function CreateFormPage() {
                 );
               })}
             </div>
-          </div>
+        </motion.div>
 
+        <motion.div layout className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-6 items-start justify-center">
+          <motion.div layout className="w-full max-w-xl shrink-0">
           {/* ── Step Content — horizontal slide ── */}
           <AnimatePresence mode="wait">
             <motion.div
@@ -321,36 +339,74 @@ export default function CreateFormPage() {
               {/* ── DETAILS ── */}
               {currentStep === "details" && (
                 <div className="space-y-6">
-                  <div className="mb-6 space-y-3 pb-4 border-b border-[#1A1A1A]">
-                    <label className="text-sm font-medium text-white block mb-1">Start from a Template</label>
-                    <div className="flex gap-2 overflow-x-auto pb-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="mb-6 space-y-4 pb-6 border-b border-[#1A1A1A]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <label className="text-sm font-medium text-white block">Start from a Template</label>
+                      <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#A1A1A1]" />
+                        <input
+                          type="text"
+                          placeholder="Search templates..."
+                          value={templateSearchQuery}
+                          onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                          className="w-full bg-[#050505] border border-[#1A1A1A] rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:border-[#333] transition-colors"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                       <button
                         onClick={() => {
                           setTitle("");
+                          setDescription("");
                           setQuestions([]);
                         }}
-                        className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${!title ? "bg-white text-black border-white" : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:text-white hover:border-[#333]"}`}
+                        className={`shrink-0 w-36 p-4 rounded-xl text-left border transition-all ${
+                          !title && questions.length === 0
+                            ? "bg-white text-black border-white shadow-md"
+                            : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
+                        }`}
                       >
-                        Start from scratch
+                        <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] flex items-center justify-center mb-3">
+                           <Plus className={`w-4 h-4 ${!title && questions.length === 0 ? "text-white" : "text-[#A1A1A1]"}`} />
+                        </div>
+                        <h3 className="font-semibold text-sm mb-1">Blank</h3>
+                        <p className={`text-xs ${!title && questions.length === 0 ? "text-[#444]" : "text-[#444748]"}`}>Start from scratch</p>
                       </button>
-                      <button
-                        onClick={() => {
-                          setTitle("Most Likely To...");
-                          setQuestions([]); // Placeholder until questions are provided
-                        }}
-                        className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${title === "Most Likely To..." ? "bg-white text-black border-white" : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:text-white hover:border-[#333]"}`}
-                      >
-                        Most Likely To
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTitle("Gaming Squad");
-                          setQuestions([]); // Placeholder until questions are provided
-                        }}
-                        className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${title === "Gaming Squad" ? "bg-white text-black border-white" : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:text-white hover:border-[#333]"}`}
-                      >
-                        Gaming Squad
-                      </button>
+                      
+                      {filteredTemplates.length === 0 ? (
+                        <div className="shrink-0 w-44 p-4 rounded-xl border border-dashed border-[#1A1A1A] flex items-center justify-center text-center">
+                          <p className="text-xs text-[#A1A1A1]">No templates found</p>
+                        </div>
+                      ) : (
+                        filteredTemplates.map((t) => {
+                          const isSelected = title === t.title;
+                          return (
+                            <button
+                              key={t.id}
+                              onClick={() => {
+                                setTitle(t.title);
+                                setDescription(t.description);
+                                setVotingType(t.voting_type);
+                                setQuestions([...t.questions]);
+                              }}
+                              className={`shrink-0 w-48 p-4 rounded-xl text-left border transition-all relative overflow-hidden group ${
+                                isSelected
+                                  ? "bg-[#1A1A1A] text-white border-[#333]"
+                                  : "bg-[#050505] text-[#A1A1A1] border-[#1A1A1A] hover:border-[#333] hover:text-white"
+                              }`}
+                            >
+                              <div className="absolute top-0 right-0 w-16 h-16 bg-white/[0.02] blur-xl rounded-full pointer-events-none transition-colors group-hover:bg-white/[0.05]" />
+                              <div className="flex items-start justify-end mb-2">
+                                <span className="text-[9px] uppercase tracking-wider font-bold text-[#444748]">
+                                  {t.voting_type === "roster" ? "Squad" : "Open"}
+                                </span>
+                              </div>
+                              <h3 className="font-semibold text-sm mb-1 truncate">{t.title}</h3>
+                              <p className="text-xs truncate text-[#444748]">{t.questions.length} questions</p>
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
 
@@ -828,8 +884,64 @@ export default function CreateFormPage() {
               </button>
             )}
           </div>
-        </div>
+        </motion.div>
+
+        {/* ── Template Preview Card ── */}
+        <AnimatePresence>
+          {selectedTemplate && currentStep === "details" && (
+            <motion.div
+              layout
+              initial={{ opacity: 0, x: 20, width: "auto" }}
+              animate={{ opacity: 1, x: 0, width: "auto" }}
+              exit={{ opacity: 0, width: 0, overflow: "hidden" }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="shrink-0"
+            >
+              <div className="glass-panel rounded-2xl p-6 lg:sticky lg:top-[120px] w-full lg:w-[360px]">
+                <div className="flex items-center gap-2 mb-4">
+                  <h3 className="font-bold text-white tracking-tight">Template Preview</h3>
+                </div>
+                
+                <h4 className="text-lg font-bold text-white mb-1 leading-tight">{selectedTemplate?.title}</h4>
+                <p className="text-xs text-[#A1A1A1] mb-5">{selectedTemplate?.description}</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-[#444748] mb-2 block">Settings</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#A1A1A1] bg-[#0A0A0A] px-2 py-1 rounded border border-[#1A1A1A] flex items-center gap-1.5">
+                        {selectedTemplate?.voting_type === "roster" ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                        {selectedTemplate?.voting_type === "roster" ? "Squad Vote" : "Open Vote"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-[#444748] mb-2 block">Questions ({selectedTemplate?.questions?.length || 0})</span>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scroll-smooth [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#333] [&::-webkit-scrollbar-thumb]:rounded-full">
+                      {(selectedTemplate?.questions || []).map((q, i) => (
+                        <div key={i} className="text-sm text-white flex items-start gap-2 p-3 rounded-xl border border-[#1A1A1A] bg-[#050505]">
+                          <span className="text-[#444748] shrink-0 text-xs mt-0.5">{i + 1}.</span>
+                          <span className="leading-snug">{q}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        </motion.div>
       </main>
     </div>
+  );
+}
+
+export default function CreateFormPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-white"><motion.div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} /></div>}>
+      <CreateFormContent />
+    </Suspense>
   );
 }
